@@ -503,13 +503,17 @@ body {
   background: transparent;
   border: 1px solid #dadce0;
   border-radius: 18px;
+  box-sizing: border-box;
   color: #3c4043;
   cursor: pointer;
   display: flex;
+  flex: 0 0 44px;
   font: inherit;
   font-size: 13px;
   gap: 8px;
+  justify-content: center;
   padding: 8px 13px;
+  width: 44px;
 }
 
 .theme-toggle:hover,
@@ -657,6 +661,20 @@ body {
   color: #c45f12;
 }
 
+.theme-light .theme-logo span {
+  color: #c45f12;
+}
+
+.theme-light .google-sign-in {
+  background: #e67e22;
+  color: #fff;
+}
+
+.theme-light .google-sign-in:hover,
+.theme-light .google-sign-in:focus-visible {
+  background: #c45f12;
+}
+
 .theme-light .theme-logo:hover,
 .theme-light .theme-logo:focus-visible {
   background: #ffedd5;
@@ -713,9 +731,23 @@ body {
 }
 
 .theme-dark .theme-logo {
-  background: #292a2d;
-  border-color: #5f6368;
-  color: #fbbc04;
+  background: #e8f0fe;
+  border-color: #8ab4f8;
+  color: #202124;
+}
+
+.theme-dark .theme-logo span {
+  color: #5f8fd8;
+}
+
+.theme-dark .google-sign-in {
+  background: #8ab4f8;
+  color: #202124;
+}
+
+.theme-dark .google-sign-in:hover,
+.theme-dark .google-sign-in:focus-visible {
+  background: #6f9cda;
 }
 
 .theme-dark .theme-logo:hover,
@@ -736,14 +768,14 @@ body {
 }
 
 .theme-dark .theme-toggle {
-  background: #292a2d;
-  border-color: #5f6368;
+  background: #aac2e7;
+  border-color: #6f9cda;
   color: #e8eaed;
 }
 
 .theme-dark .theme-toggle:hover,
 .theme-dark .theme-toggle:focus-visible {
-  background: #3c4043;
+  background: #bccde4;
 }
 
 @media (max-width: 720px) {

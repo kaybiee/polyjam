@@ -69,6 +69,7 @@ function GoogleSignInButton({ onConnected }: GoogleSignInButtonProps) {
                     sessionStorage.setItem("polyjam-google-access-token", response.access_token);
                     sessionStorage.setItem("polyjam-google-profile", JSON.stringify(profile));
                     onConnected(profile);
+                    window.location.reload();
                 } catch {
                     setError("Impossible de récupérer le compte Google.");
                 }

@@ -52,7 +52,7 @@ function Dispo() {
 
             <div className="spreadsheet-selector">
                 <div>
-                    <p className="eyebrow">Source actuelle</p>
+                    <p className="eyebrow">Fichier selectionné</p>
                     <strong>{selectedSpreadsheet?.name ?? "Aucun fichier sélectionné"}</strong>
                 </div>
                 <GoogleDrivePicker onFileSelected={selectSpreadsheet} />

@@ -4,6 +4,7 @@
         "/^cd polyjam && npm run$/": {
             "approve": true,
             "matchCommandLine": true
-        }
+        },
+        "npm run build": true
     }
 }

@@ -40,6 +40,7 @@ export default function App() {
     sessionStorage.removeItem("polyjam-google-profile");
     sessionStorage.removeItem("polyjam-google-access-token");
     setGoogleProfile(null);
+    window.location.reload();
   }
 
   return (

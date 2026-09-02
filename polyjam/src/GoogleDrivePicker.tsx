@@ -132,7 +132,7 @@ function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
                 onClick={openPicker}
                 disabled={!ready}
             >
-                {ready ? "Choisir un fichier Google Drive" : "Connexion aux services Google..."}
+                {ready ? "Choisir un fichier Google Drive" : "Pas connecté aux services Google"}
             </button>
             {error && <p className="picker-error">{error}</p>}
         </div>
