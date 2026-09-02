@@ -51,6 +51,12 @@ interface GoogleApi {
 }
 
 declare global {
+    interface GoogleProfile {
+        name?: string;
+        email?: string;
+        picture?: string;
+    }
+
     interface Window {
         google?: GoogleApi;
         gapi?: {

@@ -6,7 +6,13 @@ interface GoogleDrivePickerProps {
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
-const driveScope = "https://www.googleapis.com/auth/drive.readonly";
+const googleScopes = [
+    "openid",
+    "profile",
+    "email",
+    "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/spreadsheets.readonly",
+].join(" ");
 
 function loadScript(src: string, id: string) {
     return new Promise<void>((resolve, reject) => {
@@ -47,48 +53,67 @@ function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
             });
     }, [isConfigured]);
 
+    useEffect(() => {
+        if (!ready || !isConfigured || !window.location.search.includes("signin=1")) return;
+
+        window.history.replaceState(null, "", "/dispo");
+        openPicker();
+    }, [ready, isConfigured]);
+
     function openPicker() {
         if (!window.google || !window.gapi || !clientId || !apiKey) return;
 
         setError(null);
+        const existingToken = sessionStorage.getItem("polyjam-google-access-token");
+        if (existingToken) {
+            showPicker(existingToken);
+            return;
+        }
+
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
             client_id: clientId,
-            scope: driveScope,
+            scope: googleScopes,
             callback: (response) => {
                 const accessToken = response.access_token;
                 if (!accessToken) {
                     setError("La connexion Google a échoué.");
                     return;
                 }
-
-                const view = new window.google!.picker.DocsView(
-                    window.google!.picker.ViewId.SPREADSHEETS
-                ).setMimeTypes("application/vnd.google-apps.spreadsheet");
-
-                const picker = new window.google!.picker.PickerBuilder()
-                    .addView(view)
-                    .setOAuthToken(accessToken)
-                    .setDeveloperKey(apiKey)
-                    .setCallback((pickerResponse) => {
-                        if (
-                            pickerResponse.action === window.google!.picker.Action.PICKED &&
-                            pickerResponse.docs?.[0]
-                        ) {
-                            const file = pickerResponse.docs[0];
-                            onFileSelected({
-                                id: file.id,
-                                name: file.name ?? "Sans titre",
-                                accessToken,
-                            });
-                        }
-                    })
-                    .build();
-
-                picker.setVisible(true);
+                sessionStorage.setItem("polyjam-google-access-token", accessToken);
+                showPicker(accessToken);
             },
         });
 
-        tokenClient.requestAccessToken({ prompt: "consent" });
+        tokenClient.requestAccessToken({ prompt: "select_account" });
+    }
+
+    function showPicker(accessToken: string) {
+        if (!window.google || !apiKey) return;
+
+        const view = new window.google.picker.DocsView(
+            window.google.picker.ViewId.SPREADSHEETS
+        ).setMimeTypes("application/vnd.google-apps.spreadsheet");
+
+        const picker = new window.google.picker.PickerBuilder()
+            .addView(view)
+            .setOAuthToken(accessToken)
+            .setDeveloperKey(apiKey)
+            .setCallback((pickerResponse) => {
+                if (
+                    pickerResponse.action === window.google!.picker.Action.PICKED &&
+                    pickerResponse.docs?.[0]
+                ) {
+                    const file = pickerResponse.docs[0];
+                    onFileSelected({
+                        id: file.id,
+                        name: file.name ?? "Sans titre",
+                        accessToken,
+                    });
+                }
+            })
+            .build();
+
+        picker.setVisible(true);
     }
 
     if (!isConfigured) {

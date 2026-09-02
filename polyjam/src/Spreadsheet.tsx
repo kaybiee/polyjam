@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import * as XLSX from "xlsx";
 
 interface Person {
     name: string;
@@ -33,7 +32,7 @@ function Spreadsheet({ url, accessToken }: SpreadsheetProps) {
         setError(null);
 
         try {
-            // Fetch the Excel file
+            // Fetch the values directly from the Google Sheets API.
             const response = await fetch(
                 url,
                 accessToken
@@ -42,35 +41,18 @@ function Spreadsheet({ url, accessToken }: SpreadsheetProps) {
             );
 
             if (!response.ok) {
+                const details = await response.json().catch(() => null) as {
+                    error?: { message?: string };
+                } | null;
                 throw new Error(
-                    `Failed to fetch spreadsheet: ${response.status} ${response.statusText}`
+                    details?.error?.message
+                        ? `Impossible de charger le tableau : ${details.error.message}`
+                        : `Impossible de charger le tableau : ${response.status} ${response.statusText}`
                 );
             }
 
-            // Get the file as binary data
-            const buffer = await response.arrayBuffer();
-
-            // Read Excel workbook
-            const workbook = XLSX.read(buffer, {
-                type: "array",
-                cellDates: true,
-            });
-
-            // Get the Dispos sheet
-            const worksheet = workbook.Sheets["Dispos"];
-
-            if (!worksheet) {
-                throw new Error(
-                    'Could not find the "Dispos" sheet.'
-                );
-            }
-
-            // Convert sheet to rows
-            const rows = XLSX.utils.sheet_to_json(worksheet, {
-                header: 1,
-                defval: "",
-                raw: true,
-            }) as unknown[][];
+            const result = await response.json() as { values?: unknown[][] };
+            const rows = result.values ?? [];
 
             // Row 5 = header
             const headerRowIndex = 4;
@@ -119,7 +101,7 @@ function Spreadsheet({ url, accessToken }: SpreadsheetProps) {
                     continue;
                 }
 
-                const date = parseExcelDate(row[0]);
+                const date = parseSheetDate(row[0]);
 
                 if (!date) {
                     continue;
@@ -222,7 +204,7 @@ function Spreadsheet({ url, accessToken }: SpreadsheetProps) {
         <div className="availability-view">
             <div className="calendar-toolbar">
                 <div>
-                    <p className="eyebrow">Carte des disponibilités</p>
+                    <p className="eyebrow">Calendrier des disponibilités</p>
                     <h2>{monthLabel}</h2>
                 </div>
                 <div className="month-controls">
@@ -329,11 +311,17 @@ function formatIsoDate(date: Date) {
     ).padStart(2, "0")}`;
 }
 
+function formatUtcIsoDate(date: Date) {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(
+        date.getUTCDate()
+    ).padStart(2, "0")}`;
+}
+
 function formatAvailableCount(count: number) {
     return `${count} personne${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"}`;
 }
 
-function parseExcelDate(
+function parseSheetDate(
     value: unknown
 ): string | null {
     if (
@@ -355,20 +343,21 @@ function parseExcelDate(
     }
 
     if (typeof value === "number") {
-        const date =
-            XLSX.SSF.parse_date_code(
-                value
-            );
+        const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+        const date = new Date(excelEpoch.getTime() + value * 86400000);
+        return formatUtcIsoDate(date);
+    }
 
-        if (!date) {
-            return null;
+    if (typeof value === "string") {
+        const match = value.trim().match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+        if (match) {
+            return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`;
         }
 
-        return `${date.y}-${String(
-            date.m
-        ).padStart(2, "0")}-${String(
-            date.d
-        ).padStart(2, "0")}`;
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+            return formatIsoDate(date);
+        }
     }
 
     return null;

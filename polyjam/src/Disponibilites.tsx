@@ -13,11 +13,9 @@ function Dispo() {
     const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<SelectedSpreadsheet | null>(
         getStoredSpreadsheet
     );
-    const spreadsheetUrl = selectedSpreadsheet?.accessToken
-        ? `https://www.googleapis.com/drive/v3/files/${selectedSpreadsheet.id}/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
-        : selectedSpreadsheet
-            ? `https://docs.google.com/spreadsheets/d/${selectedSpreadsheet.id}/export?format=xlsx`
-            : "";
+    const spreadsheetUrl = selectedSpreadsheet
+        ? `/api/spreadsheets/${selectedSpreadsheet.id}/values?range=${encodeURIComponent("'Dispos'!A:ZZ")}`
+        : "";
 
     useEffect(() => {
         function restoreFromHistory() {
@@ -47,8 +45,7 @@ function Dispo() {
             <div className="drive-breadcrumb"><Link to="/">Accueil</Link><b>›</b><span>Disponibilités</span></div>
             <div className="document-heading">
                 <div>
-                    <p className="eyebrow">Calendrier partagé</p>
-                    <h1>Disponibilités 2026-2027</h1>
+                    <h1>Disponibilités</h1>
                 </div>
                 <button className="document-action" type="button" aria-label="Ajouter aux favoris">☆</button>
             </div>
