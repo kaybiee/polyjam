@@ -1,0 +1,9 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "printf": true,
+        "/^cd polyjam && npm run$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

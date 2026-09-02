@@ -109,3 +109,1090 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+.availability-view {
+  width: min(920px, calc(100% - 48px));
+  margin: 0 auto 64px;
+  text-align: left;
+}
+
+.spreadsheet-selector {
+  align-items: center;
+  background: #eef4fb;
+  border-left: 3px solid #4777a8;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 0 auto 28px;
+  padding: 16px 18px;
+  text-align: left;
+}
+
+.spreadsheet-selector .eyebrow {
+  margin-bottom: 5px;
+}
+
+.drive-picker-button {
+  background: #4777a8;
+  border: 0;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 11px 15px;
+}
+
+.drive-picker-button:hover:not(:disabled),
+.drive-picker-button:focus-visible {
+  background: #345f8d;
+  outline: 2px solid rgba(36, 92, 50, 0.3);
+  outline-offset: 2px;
+}
+
+.drive-picker-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.picker-notice,
+.picker-error {
+  color: var(--text);
+  font-size: 12px;
+  margin: 0;
+  max-width: 360px;
+}
+
+.picker-error {
+  color: #4b6f96;
+  margin-top: 8px;
+}
+
+.calendar-toolbar,
+.details-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.calendar-toolbar h2,
+.details-heading h2 {
+  margin: 0;
+  text-transform: capitalize;
+}
+
+.eyebrow {
+  color: #4777a8;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  line-height: 1.2;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.month-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.month-controls button {
+  width: 42px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-h);
+  background: var(--bg);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.month-controls button:hover,
+.month-controls button:focus-visible {
+  border-color: #4777a8;
+  outline: 2px solid rgba(196, 81, 47, 0.2);
+  outline-offset: 2px;
+}
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: 6px;
+  color: var(--text);
+  font-size: 12px;
+  margin: 22px 0 12px;
+}
+
+.heatmap-legend span:first-child {
+  margin-right: 4px;
+}
+
+.heatmap-legend span:last-child {
+  margin-left: 4px;
+}
+
+.legend-swatch,
+.person-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
+.legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.weekday {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  text-transform: uppercase;
+}
+
+.calendar-day {
+  aspect-ratio: 1.25;
+  min-height: 76px;
+  border: 3px solid transparent;
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: var(--text-h);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 10px;
+  text-align: left;
+}
+
+button.calendar-day {
+  cursor: pointer;
+  font: inherit;
+}
+
+button.calendar-day:hover,
+button.calendar-day:focus-visible {
+  border-color: #4777a8;
+  outline: none;
+}
+
+button.calendar-day.selected {
+  border: 3px solid #345f8d;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.7), 0 3px 0 #345f8d;
+  padding: 8px;
+}
+
+button.calendar-day.selected span {
+  color: #345f8d;
+  font-weight: 800;
+}
+
+button.calendar-day.selected strong {
+  color: #345f8d;
+}
+
+button.calendar-day.today {
+  border: 3px solid #4777a8;
+  box-shadow: 0 0 0 3px rgba(71, 119, 168, 0.2), 0 4px 10px rgba(52, 95, 141, 0.22);
+  font-weight: 700;
+  padding: 8px;
+}
+
+button.calendar-day.today span {
+  color: #4777a8;
+}
+
+button.calendar-day.today.selected {
+  border-color: #345f8d;
+  box-shadow: 0 0 0 3px rgba(52, 95, 141, 0.24), 0 4px 10px rgba(52, 95, 141, 0.28);
+}
+
+.calendar-day strong {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.calendar-day.empty {
+  color: #000;
+  background: transparent;
+}
+
+button.calendar-day.level-0 {
+  background: #f1f3f4;
+  color: #5f6368;
+}
+
+.level-1 { background: #f7fbf5; color: #000; }
+.level-2 { background: #dcefd8; color: #000; }
+.level-3 { background: #add5a5; color: #000; }
+.level-4 { background: #62ad69; color: #fff; }
+
+.date-details {
+  background: #eef4fb;
+  border-top: 3px solid #4777a8;
+  margin-top: 28px;
+  min-height: 180px;
+  padding: 24px;
+}
+
+.availability-count {
+  color: #4777a8;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.event-label {
+  color: var(--text-h);
+  font-weight: 700;
+  margin: 14px 0;
+}
+
+.people-list {
+  border-top: 1px solid rgba(8, 6, 13, 0.12);
+  margin-top: 18px;
+  padding-top: 8px;
+}
+
+.person-row {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 8px minmax(100px, 160px) 1fr;
+  padding: 8px 0;
+}
+
+.person-row span:last-child {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.person-dot {
+  width: 8px;
+  height: 8px;
+  background: #4777a8;
+  border-radius: 50%;
+}
+
+.status-message {
+  margin: 48px auto;
+  max-width: 920px;
+  padding: 0 24px;
+}
+
+.error-message {
+  color: #4b6f96;
+}
+
+@media (max-width: 640px) {
+  .availability-view {
+    width: min(100% - 24px, 520px);
+    margin-bottom: 32px;
+  }
+
+  .calendar-toolbar,
+  .details-heading {
+    align-items: start;
+  }
+
+  .calendar-toolbar h2,
+  .details-heading h2 {
+    font-size: 20px;
+  }
+
+  .spreadsheet-selector {
+    align-items: start;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .drive-picker-button {
+    width: 100%;
+  }
+
+  .heatmap-legend {
+    justify-content: start;
+    font-size: 10px;
+  }
+
+  .calendar-grid {
+    gap: 4px;
+  }
+
+  .weekday {
+    font-size: 10px;
+    padding: 4px 2px;
+  }
+
+  .calendar-day {
+    min-height: 52px;
+    padding: 6px;
+  }
+
+  .calendar-day strong {
+    font-size: 16px;
+  }
+
+  .date-details {
+    padding: 18px 14px;
+  }
+
+  .person-row {
+    grid-template-columns: 8px 1fr;
+  }
+
+  .person-row span:last-child {
+    grid-column: 2;
+  }
+}
+
+/* Drive workspace */
+body {
+  background: var(--bg);
+  color: var(--text-h);
+  font-family: Arial, sans-serif;
+}
+
+#root {
+  width: 100%;
+  border: 0;
+  background: var(--bg);
+  color: var(--text-h);
+  text-align: left;
+}
+
+.drive-app {
+  min-height: 100svh;
+}
+
+.logo-area {
+  align-items: center;
+  border-bottom: 1px solid #e8eaed;
+  display: flex;
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 24px;
+}
+
+.drive-brand picture {
+  display: block;
+  line-height: 0;
+}
+
+.drive-brand img {
+  display: block;
+  height: 36px;
+  object-fit: contain;
+  object-position: left center;
+  width: 208px;
+}
+
+.theme-toggle {
+  align-items: center;
+  background: transparent;
+  border: 1px solid #dadce0;
+  border-radius: 18px;
+  color: #3c4043;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 13px;
+  gap: 8px;
+  padding: 8px 13px;
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible {
+  background: #f1f3f4;
+  border-color: #8ab4f8;
+  outline: 2px solid rgba(71, 119, 168, 0.22);
+  outline-offset: 2px;
+}
+
+.theme-toggle span {
+  color: #4777a8;
+  font-size: 17px;
+  line-height: 1;
+}
+
+@media (prefers-color-scheme: dark) {
+  .logo-area {
+    border-color: var(--border);
+  }
+}
+
+.theme-light {
+  color-scheme: light;
+}
+
+.theme-dark {
+  color-scheme: dark;
+}
+
+.theme-light {
+  --bg: #fff;
+  --text: #5f6368;
+  --text-h: #202124;
+  --border: #e8eaed;
+  --accent: #e67e22;
+  --accent-bg: #fff7ed;
+  --accent-border: #f3b16e;
+  color-scheme: light;
+}
+
+.theme-dark {
+  --bg: #202124;
+  --text: #bdc1c6;
+  --text-h: #e8eaed;
+  --border: #3c4043;
+  --accent: #8ab4f8;
+  --accent-bg: #292a2d;
+  --accent-border: #6f9cda;
+  color-scheme: dark;
+}
+
+.theme-light .logo-area {
+  background: #fff;
+  border-color: #e8eaed;
+}
+
+.theme-light .theme-logo {
+  background: #fff7ed;
+  border-color: #f3b16e;
+  color: #c45f12;
+}
+
+.theme-light .theme-logo:hover,
+.theme-light .theme-logo:focus-visible {
+  background: #ffedd5;
+  border-color: #e67e22;
+}
+
+.theme-light .eyebrow,
+.theme-light .availability-count {
+  color: #c45f12;
+}
+
+.theme-light .spreadsheet-selector,
+.theme-light .date-details {
+  background: #fff7ed;
+}
+
+.theme-light .spreadsheet-selector {
+  border-left-color: #e67e22;
+}
+
+.theme-light .date-details {
+  border-top-color: #e67e22;
+}
+
+.theme-light .drive-picker-button,
+.theme-light .primary-action {
+  background: #e67e22;
+}
+
+.theme-light .drive-picker-button:hover:not(:disabled),
+.theme-light .drive-picker-button:focus-visible,
+.theme-light .primary-action:hover,
+.theme-light .primary-action:focus-visible {
+  background: #c45f12;
+}
+
+.theme-light .person-dot {
+  background: #e67e22;
+}
+
+.theme-light .calendar-day.today {
+  border-color: #e67e22;
+  box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.2), 0 4px 10px rgba(196, 95, 18, 0.22);
+}
+
+.theme-light .calendar-day.today span,
+.theme-light .calendar-day.today.selected span,
+.theme-light .calendar-day.today.selected strong {
+  color: #c45f12;
+}
+
+.theme-dark .logo-area {
+  background: #202124;
+}
+
+.theme-dark .theme-logo {
+  background: #292a2d;
+  border-color: #5f6368;
+  color: #fbbc04;
+}
+
+.theme-dark .theme-logo:hover,
+.theme-dark .theme-logo:focus-visible {
+  background: #3c4043;
+  border-color: #8ab4f8;
+}
+
+.theme-dark .drive-main,
+.theme-dark .drive-document,
+.theme-dark .drive-home {
+  color: #e8eaed;
+}
+
+.theme-dark .logo-area {
+  background: #202124;
+  border-color: #3c4043;
+}
+
+.theme-dark .theme-toggle {
+  background: #292a2d;
+  border-color: #5f6368;
+  color: #e8eaed;
+}
+
+.theme-dark .theme-toggle:hover,
+.theme-dark .theme-toggle:focus-visible {
+  background: #3c4043;
+}
+
+@media (max-width: 720px) {
+  .theme-toggle {
+    font-size: 0;
+    gap: 0;
+    padding: 8px 10px;
+  }
+}
+
+.drive-header {
+  align-items: center;
+  border-bottom: 1px solid #e8eaed;
+  display: flex;
+  gap: 24px;
+  height: 64px;
+  padding: 0 24px;
+}
+
+.drive-brand {
+  align-items: center;
+  color: #3c4043;
+  display: flex;
+  flex: 0 0 190px;
+  font-size: 22px;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.drive-brand-mark {
+  align-items: center;
+  background: #1a73e8;
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  font-size: 17px;
+  font-weight: 700;
+  height: 31px;
+  justify-content: center;
+  width: 31px;
+}
+
+.drive-search {
+  align-items: center;
+  background: #f1f3f4;
+  border-radius: 8px;
+  color: #5f6368;
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  max-width: 720px;
+  padding: 0 16px;
+}
+
+.drive-search span {
+  font-size: 25px;
+  line-height: 1;
+  transform: rotate(-20deg);
+}
+
+.drive-search input {
+  background: transparent;
+  border: 0;
+  color: #202124;
+  font: inherit;
+  outline: 0;
+  padding: 12px 0;
+  width: 100%;
+}
+
+.drive-header-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.drive-header-actions button {
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  color: #5f6368;
+  cursor: pointer;
+  font-size: 18px;
+  height: 38px;
+  width: 38px;
+}
+
+.drive-header-actions button:hover {
+  background: #f1f3f4;
+}
+
+.drive-avatar {
+  align-items: center;
+  background: #4777a8;
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  height: 32px;
+  justify-content: center;
+  margin-left: 8px;
+  width: 32px;
+}
+
+.drive-layout {
+  display: flex;
+  min-height: 100svh;
+}
+
+.drive-sidebar {
+  border-right: 1px solid #e8eaed;
+  display: flex;
+  flex: 0 0 238px;
+  flex-direction: column;
+  padding: 22px 12px;
+}
+
+.new-file-button {
+  align-items: center;
+  align-self: flex-start;
+  border: 1px solid #dadce0;
+  border-radius: 24px;
+  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.16);
+  color: #3c4043;
+  display: flex;
+  font-size: 14px;
+  gap: 10px;
+  margin: 0 8px 28px;
+  padding: 12px 18px 12px 14px;
+  text-decoration: none;
+}
+
+.new-file-button:hover {
+  background: #f8fafd;
+  box-shadow: 0 2px 5px rgba(60, 64, 67, 0.2);
+}
+
+.new-file-button span {
+  color: #1a73e8;
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 16px;
+}
+
+.drive-nav-item {
+  align-items: center;
+  border-radius: 0 18px 18px 0;
+  color: #3c4043;
+  display: flex;
+  font-size: 14px;
+  gap: 16px;
+  margin: 2px 0;
+  padding: 11px 18px;
+  text-decoration: none;
+}
+
+.drive-nav-item span {
+  color: #5f6368;
+  font-size: 18px;
+  text-align: center;
+  width: 18px;
+}
+
+.drive-nav-item:hover,
+.drive-nav-item.active {
+  background: #e8f0fe;
+  color: #174ea6;
+}
+
+.drive-nav-item.active span {
+  color: #1a73e8;
+}
+
+.storage-info {
+  border-top: 1px solid #e8eaed;
+  color: #5f6368;
+  font-size: 12px;
+  margin-top: auto;
+  padding: 20px 12px 0;
+}
+
+.storage-bar {
+  background: #dadce0;
+  border-radius: 4px;
+  height: 4px;
+  margin-bottom: 9px;
+  overflow: hidden;
+}
+
+.storage-bar span {
+  background: #1a73e8;
+  display: block;
+  height: 100%;
+  width: 32%;
+}
+
+.drive-main {
+  flex: 1;
+  min-width: 0;
+  padding: 28px 40px 60px;
+}
+
+.drive-home,
+.drive-document {
+  margin: 0 auto;
+  max-width: 1120px;
+}
+
+.drive-breadcrumb {
+  align-items: center;
+  color: #5f6368;
+  display: flex;
+  font-size: 13px;
+  gap: 10px;
+  margin: 0 0 22px;
+}
+
+.drive-breadcrumb b {
+  color: #9aa0a6;
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.drive-breadcrumb a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.drive-breadcrumb a:hover {
+  color: #4777a8;
+  text-decoration: underline;
+}
+
+.drive-home h1,
+.drive-document h1 {
+  color: #202124;
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: 0;
+  margin: 0 0 24px;
+}
+
+.drive-file-card {
+  align-items: center;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  color: #202124;
+  display: flex;
+  gap: 14px;
+  max-width: 520px;
+  padding: 17px 18px;
+  text-decoration: none;
+}
+
+.drive-file-card:hover {
+  border-color: #a8c7fa;
+  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.2);
+}
+
+.primary-action {
+  background: #4777a8;
+  border-radius: 4px;
+  color: #fff;
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: 18px;
+  padding: 11px 16px;
+  text-decoration: none;
+}
+
+.primary-action:hover,
+.primary-action:focus-visible {
+  background: #345f8d;
+  outline: 2px solid rgba(71, 119, 168, 0.28);
+  outline-offset: 2px;
+}
+
+.file-icon {
+  color: #1a73e8;
+  font-size: 28px;
+}
+
+.drive-file-card strong,
+.drive-file-card small {
+  display: block;
+}
+
+.drive-file-card small {
+  color: #5f6368;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.file-menu {
+  color: #5f6368;
+  font-size: 20px;
+  margin-left: auto;
+}
+
+.document-heading {
+  align-items: center;
+  border-bottom: 1px solid #e8eaed;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+}
+
+.document-heading h1 {
+  margin-bottom: 0;
+}
+
+.document-heading .eyebrow {
+  color: #5f6368;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+}
+
+.document-action {
+  background: transparent;
+  border: 0;
+  color: #5f6368;
+  cursor: pointer;
+  font-size: 25px;
+}
+
+.document-action:hover {
+  color: #1a73e8;
+}
+
+@media (max-width: 720px) {
+  .drive-header {
+    gap: 12px;
+    padding: 0 14px;
+  }
+
+  .drive-brand {
+    flex-basis: auto;
+  }
+
+  .drive-brand img {
+    height: 30px;
+    width: 174px;
+  }
+
+  .drive-header-actions button {
+    display: none;
+  }
+
+  .drive-sidebar {
+    flex-basis: 54px;
+    padding: 18px 6px;
+  }
+
+  .new-file-button {
+    border: 0;
+    box-shadow: none;
+    font-size: 0;
+    margin: 0 auto 22px;
+    padding: 10px;
+  }
+
+  .new-file-button span {
+    font-size: 25px;
+  }
+
+  .drive-nav-item {
+    border-radius: 50%;
+    font-size: 0;
+    justify-content: center;
+    padding: 11px;
+  }
+
+  .drive-nav-item span {
+    font-size: 18px;
+  }
+
+  .storage-info {
+    padding: 20px 6px 0;
+  }
+
+  .storage-info > span {
+    display: none;
+  }
+
+  .drive-main {
+    padding: 22px 16px 40px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  body,
+  #root {
+    background: #202124;
+    color: #e8eaed;
+  }
+
+  .logo-area,
+  .document-heading {
+    border-color: #3c4043;
+  }
+
+  .drive-home h1,
+  .drive-document h1,
+  .drive-file-card,
+  .drive-search input,
+  .document-action {
+    color: #e8eaed;
+  }
+
+  .drive-file-card,
+  .spreadsheet-selector,
+  .date-details {
+    background: #292a2d;
+    border-color: #5f6368;
+  }
+
+  .drive-file-card:hover {
+    border-color: #8ab4f8;
+  }
+
+  .drive-file-card small,
+  .drive-breadcrumb,
+  .document-heading .eyebrow,
+  .person-row span:last-child,
+  .picker-notice {
+    color: #bdc1c6;
+  }
+
+  .drive-search {
+    background: #292a2d;
+  }
+
+  .month-controls button {
+    background: #292a2d;
+    border-color: #5f6368;
+    color: #e8eaed;
+  }
+}
+
+body.theme-light,
+body.theme-light #root {
+  background: #fff;
+  color: #202124;
+}
+
+body.theme-light .logo-area,
+body.theme-light .document-heading {
+  background: #fff;
+  border-color: #e8eaed;
+}
+
+body.theme-light .drive-home h1,
+body.theme-light .drive-document h1,
+body.theme-light .drive-file-card {
+  color: #202124;
+}
+
+body.theme-light .spreadsheet-selector,
+body.theme-light .date-details {
+  background: #fff7ed;
+}
+
+body.theme-light .month-controls button {
+  background: #fff;
+  color: #202124;
+}
+
+body.theme-dark,
+body.theme-dark #root {
+  background: #202124;
+  color: #e8eaed;
+}
+
+body.theme-dark .logo-area,
+body.theme-dark .document-heading {
+  background: #202124;
+  border-color: #3c4043;
+}
+
+body.theme-dark .drive-home h1,
+body.theme-dark .drive-document h1,
+body.theme-dark .drive-file-card {
+  color: #e8eaed;
+}
+
+body.theme-dark .drive-file-card,
+body.theme-dark .spreadsheet-selector,
+body.theme-dark .date-details {
+  background: #292a2d;
+  border-color: #5f6368;
+}
+
+body.theme-dark .month-controls button {
+  background: #292a2d;
+  border-color: #5f6368;
+  color: #e8eaed;
+}
+
+body.theme-dark .calendar-day.level-0 {
+  background: #292a2d;
+  color: #bdc1c6;
+}
+
+body.theme-dark .calendar-day.level-1 {
+  background: #294333;
+  color: #e8f3eb;
+}
+
+body.theme-dark .calendar-day.level-2 {
+  background: #3d6546;
+  color: #f1f8f2;
+}
+
+body.theme-dark .calendar-day.level-3 {
+  background: #56845b;
+  color: #fff;
+}
+
+body.theme-dark .calendar-day.level-4 {
+  background: #79ad79;
+  color: #fff;
+}
+
+body.theme-dark button.calendar-day.today {
+  border-color: #8ab4f8;
+  box-shadow: 0 0 0 3px rgba(138, 180, 248, 0.2), 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+body.theme-dark button.calendar-day.today span,
+body.theme-dark button.calendar-day.today.selected span,
+body.theme-dark button.calendar-day.today.selected strong {
+  color: #8ab4f8;
+}
