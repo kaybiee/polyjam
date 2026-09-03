@@ -2115,6 +2115,14 @@ button.instrument-chip:hover {
   padding: 4px 7px;
 }
 
+.members-list .instrument-chip.main-instrument {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  padding: 4px 7px;
+}
+
 .members-list .member-card-actions {
   align-items: center;
   bottom: auto;
