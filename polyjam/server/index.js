@@ -361,7 +361,8 @@ async function requireAllowedGoogleUser(request, response, next) {
 connectDatabase()
     .then(() => {
         app.listen(port, "0.0.0.0", () => {
-            console.log(`Polyjam API listening at http://localhost:${port}`);
+            const serverUrl = process.env.RENDER_EXTERNAL_URL ?? `http://localhost:${port}`;
+            console.log(`Polyjam API listening at ${serverUrl}`);
         });
     })
     .catch((error) => {
