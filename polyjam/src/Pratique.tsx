@@ -110,8 +110,8 @@ function Pratique() {
 
     return (
         <div className="drive-document pratique-page">
-            <div className="drive-breadcrumb"><Link to="/">Accueil</Link><b>›</b><span>Pratique</span></div>
-            <div className="document-heading"><div><h1>Pratique</h1></div></div>
+            <div className="drive-breadcrumb"><Link to="/">Accueil</Link><b>›</b><span>Pratiques</span></div>
+            <div className="document-heading"><div><h1>Pratiques</h1></div></div>
             <SpreadsheetSelector selectedSpreadsheet={selectedSpreadsheet} onFileSelected={selectSpreadsheet} />
             {error && <p className="status-message error-message">{error}</p>}
             <div className="pratique-form">

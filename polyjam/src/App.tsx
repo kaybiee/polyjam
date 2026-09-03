@@ -109,7 +109,7 @@ export default function App() {
           <NavLink to="/songs">Chansons</NavLink>
           <NavLink to="/dispo">Disponibilités</NavLink>
           <NavLink to="/membres">Membres</NavLink>
-          <NavLink to="/pratique">Pratique</NavLink>
+          <NavLink to="/pratique">Pratiques</NavLink>
           <NavLink to="/setlists">Setlists</NavLink>
         </nav>
         {googleProfile ? (
@@ -166,7 +166,7 @@ export default function App() {
               </Link>
               <Link className="drive-file-card navigation-card" to="/pratique">
                 <span className="file-icon">♬</span>
-                <strong>Pratique</strong>
+                <strong>Pratiques</strong>
               </Link>
               <Link className="drive-file-card navigation-card" to="/setlists">
                 <span className="file-icon">♫</span>
