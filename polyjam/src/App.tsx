@@ -4,7 +4,7 @@ import Dispo from "./Disponibilites";
 import Membres from "./Membres";
 import Setlists from "./Setlists";
 import Songs from "./Songs";
-import Pratique from "./Pratique";
+import Pratique from "./Pratique.tsx";
 import PracticeSchedule from "./PracticeSchedule";
 import GoogleSignInButton from "./GoogleSignInButton";
 import SignInPage from "./SignInPage";
