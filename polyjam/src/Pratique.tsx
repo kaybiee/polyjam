@@ -73,6 +73,14 @@ function Pratique() {
     }
 
     const generate = useCallback(() => {
+        const startMinutes = timeToMinutes(startTime);
+        const endMinutes = timeToMinutes(endTime);
+        if (startMinutes === null || endMinutes === null || startMinutes >= endMinutes) {
+            setCandidates([]);
+            setError("L'heure de début doit être avant l'heure de fin.");
+            setGenerating(false);
+            return;
+        }
         setGenerating(true);
         setError(null);
         const selectedSongs = selectedSetlist?.songIds.map((songId) => songs.find((song) => song.songId === songId)).filter((song): song is PracticeSong => Boolean(song)) ?? [];
@@ -109,12 +117,15 @@ function Pratique() {
             <div className="pratique-form">
                 <div><label htmlFor="practice-date">Date de référence</label><input id="practice-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} /></div>
                 <div><label htmlFor="practice-setlist">Setlist</label><select id="practice-setlist" value={selectedSetlistId} onChange={(event) => setSelectedSetlistId(event.target.value)} disabled={loading}><option value="">Choisissez une setlist</option>{setlists.map((setlist) => <option key={setlist.setlistId} value={setlist.setlistId}>{setlist.name}</option>)}</select></div>
-                <div><label htmlFor="practice-start">Début</label><input id="practice-start" type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} /></div>
-                <div><label htmlFor="practice-end">Fin</label><input id="practice-end" type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} /></div>
+                <div className="practice-time-fields">
+                    <div><label htmlFor="practice-start">Début</label><input id="practice-start" type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} aria-invalid={timeToMinutes(startTime) === null || timeToMinutes(endTime) === null || timeToMinutes(startTime)! >= timeToMinutes(endTime)!} /></div>
+                    <div><label htmlFor="practice-end">Fin</label><input id="practice-end" type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} aria-invalid={timeToMinutes(startTime) === null || timeToMinutes(endTime) === null || timeToMinutes(startTime)! >= timeToMinutes(endTime)!} /></div>
+                </div>
                 <div><label htmlFor="practice-forgiveness">Membres absents acceptés</label><input id="practice-forgiveness" type="number" min="0" max="20" value={forgiveness} onChange={(event) => setForgiveness(Number(event.target.value))} /></div>
                 <div><label htmlFor="practice-sort">Classer les résultats</label><select id="practice-sort" value={sortMode} onChange={(event) => setSortMode(event.target.value as "nearest" | "songs")}><option value="nearest">Plus proches de la date</option><option value="songs">Plus de chansons</option></select></div>
             </div>
             {setlists.length === 0 && !loading && <p className="empty-members">Aucune setlist trouvée.</p>}
+            {!loading && setlists.length > 0 && !selectedSetlist && <p className="empty-members">Aucune setlist sélectionnée.</p>}
             {candidates.length > 0 && <PracticeResults candidates={candidates} onSelect={openSchedule} />}
             {hasGenerated && !generating && availabilityDates.length > 0 && selectedSetlist && candidates.length === 0 && <p className="empty-members">Aucune date compatible trouvée avec ces paramètres.</p>}
         </div>
@@ -143,5 +154,12 @@ function getSpreadsheetFromUrl(): SelectedSpreadsheet | null {
 }
 function formatIsoDate(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
 function formatDisplayDate(date: string) { return new Date(`${date}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); }
+function timeToMinutes(value: string): number | null {
+    const match = /^(\d{2}):(\d{2})$/.exec(value);
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    return hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60 ? hours * 60 + minutes : null;
+}
 
 export default Pratique;

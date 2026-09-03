@@ -243,6 +243,24 @@ app.put("/api/songs/:songId", requireAllowedGoogleUser, async (request, response
         return;
     }
     try {
+        const referencedMembers = members
+            ? await members.find({ memberId: { $in: song.staffMemberIds } }).toArray()
+            : song.staffMemberIds.map((memberId) => fallbackMembers.get(memberId)).filter(Boolean);
+        if (referencedMembers.length !== song.staffMemberIds.length) {
+            response.status(400).json({ error: "La chanson contient un membre inexistant." });
+            return;
+        }
+
+        const memberById = new Map(referencedMembers.map((member) => [member.memberId, member]));
+        for (const [memberId, instrument] of Object.entries(song.staffInstruments)) {
+            const member = memberById.get(memberId);
+            const memberInstruments = member?.instruments ?? (member?.instrument ? [member.instrument] : []);
+            if (!song.staffMemberIds.includes(memberId) || !allowedInstruments.has(instrument) || !memberInstruments.includes(instrument)) {
+                response.status(400).json({ error: "L'instrument assigné à la chanson est invalide." });
+                return;
+            }
+        }
+
         if (songs) await songs.replaceOne({ songId }, song, { upsert: true });
         else fallbackSongs.set(songId, song);
         response.json(song);
@@ -282,6 +300,14 @@ app.put("/api/setlists/:setlistId", requireAllowedGoogleUser, async (request, re
 
     const setlist = { setlistId, name, songIds, updatedAt: new Date().toISOString() };
     try {
+        const existingSongs = songs
+            ? await songs.find({ songId: { $in: songIds } }).toArray()
+            : songIds.map((songId) => fallbackSongs.get(songId)).filter(Boolean);
+        if (existingSongs.length !== songIds.length) {
+            response.status(400).json({ error: "La liste contient une chanson inexistante." });
+            return;
+        }
+
         if (setlists) {
             await setlists.replaceOne({ setlistId }, setlist, { upsert: true });
         } else {

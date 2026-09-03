@@ -283,8 +283,14 @@ code {
   border-radius: 8px;
   display: grid;
   gap: 16px;
-  grid-template-columns: minmax(160px, 1fr) minmax(200px, 1.4fr) auto;
+  grid-template-columns: minmax(160px, 1fr) minmax(200px, 1.4fr) minmax(220px, 1fr) auto auto;
   padding: 20px;
+}
+
+.practice-time-fields {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .pratique-form label {
@@ -850,6 +856,38 @@ body {
   object-fit: contain;
   object-position: left center;
   width: 208px;
+}
+
+.page-tabs {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  margin: 0 8px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.page-tabs a {
+  border-bottom: 2px solid transparent;
+  color: var(--text);
+  flex: 0 0 auto;
+  font-size: 13px;
+  padding: 21px 9px 19px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.page-tabs a:hover,
+.page-tabs a:focus-visible,
+.page-tabs a.active {
+  border-bottom-color: var(--accent);
+  color: var(--text-h);
+}
+
+.page-tabs a.active {
+  font-weight: 700;
 }
 
 .theme-toggle {
@@ -2230,6 +2268,26 @@ button.instrument-chip:hover {
 }
 
 @media (max-width: 720px) {
+  .logo-area {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 64px;
+    padding: 0 14px;
+  }
+
+  .page-tabs {
+    border-top: 1px solid var(--border);
+    flex-basis: 100%;
+    margin: 0 -14px;
+    order: 3;
+    padding: 0 8px;
+  }
+
+  .page-tabs a {
+    padding-bottom: 12px;
+    padding-top: 12px;
+  }
+
   .drive-header {
     gap: 12px;
     padding: 0 14px;

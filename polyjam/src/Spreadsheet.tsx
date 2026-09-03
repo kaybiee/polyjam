@@ -416,7 +416,11 @@ function PersonProfileDetails({ name, members, memberLabels }: { name: string; m
 
     return (
         <span className="person-instruments">
-            {memberInstruments.map((instrument) => <span className="instrument-chip" key={instrument}>{instrument}</span>)}
+            {memberInstruments.map((instrument) => (
+                <span className={`instrument-chip${instrument === member?.mainInstrument ? " main-instrument" : ""}`} key={instrument}>
+                    {instrument}
+                </span>
+            ))}
         </span>
     );
 }

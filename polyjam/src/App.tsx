@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import Dispo from "./Disponibilites";
 import Membres from "./Membres";
 import Setlists from "./Setlists";
@@ -104,6 +104,14 @@ export default function App() {
         <Link className="drive-brand" to="/">
           <img src={isDark ? darkLogo : lightLogo} alt="Polyjam" />
         </Link>
+        <nav className="page-tabs" aria-label="Navigation principale">
+          <NavLink to="/" end>Accueil</NavLink>
+          <NavLink to="/songs">Chansons</NavLink>
+          <NavLink to="/dispo">Disponibilités</NavLink>
+          <NavLink to="/membres">Membres</NavLink>
+          <NavLink to="/pratique">Pratique</NavLink>
+          <NavLink to="/setlists">Setlists</NavLink>
+        </nav>
         {googleProfile ? (
           <div className="google-profile" title={googleProfile.email}>
             {googleProfile.picture ? (
@@ -148,21 +156,21 @@ export default function App() {
                 <span className="file-icon">▤</span>
                 <strong>Disponibilités</strong>
               </Link>
-              <Link className="drive-file-card navigation-card" to="/membres">
-                <span className="file-icon">♙</span>
-                <strong>Membres</strong>
-              </Link>
-              <Link className="drive-file-card navigation-card" to="/setlists">
-                <span className="file-icon">♫</span>
-                <strong>Setlists</strong>
-              </Link>
               <Link className="drive-file-card navigation-card" to="/songs">
                 <span className="file-icon">♪</span>
                 <strong>Chansons</strong>
               </Link>
+              <Link className="drive-file-card navigation-card" to="/membres">
+                <span className="file-icon">♙</span>
+                <strong>Membres</strong>
+              </Link>
               <Link className="drive-file-card navigation-card" to="/pratique">
                 <span className="file-icon">♬</span>
                 <strong>Pratique</strong>
+              </Link>
+              <Link className="drive-file-card navigation-card" to="/setlists">
+                <span className="file-icon">♫</span>
+                <strong>Setlists</strong>
               </Link>
             </div>
           }
