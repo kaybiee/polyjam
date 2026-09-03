@@ -48,6 +48,10 @@ app.get("/api/health", (_request, response) => {
     response.json({ ok: true, database: members ? "mongodb" : "fallback" });
 });
 
+app.get("/", (_request, response) => {
+    response.send("Polyjam API is running.");
+});
+
 app.get("/api/google/profile", requireAllowedGoogleUser, (request, response) => {
     response.json(request.googleProfile);
 });
