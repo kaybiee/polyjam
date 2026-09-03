@@ -86,10 +86,13 @@ function Pratique() {
         return () => window.clearTimeout(refresh);
     }, [generate, hasGenerated]);
 
-    function generateFirstResults() {
-        setHasGenerated(true);
-        generate();
-    }
+    useEffect(() => {
+        if (hasGenerated || !selectedSpreadsheet || !selectedSetlist || availabilityDates.length === 0) return;
+        const initialGeneration = window.setTimeout(() => {
+            setHasGenerated(true);
+        }, 0);
+        return () => window.clearTimeout(initialGeneration);
+    }, [availabilityDates, hasGenerated, selectedSetlist, selectedSpreadsheet]);
 
     function openSchedule(candidate: PracticeCandidate) {
         sessionStorage.setItem("polyjam-practice-schedule", JSON.stringify(candidate));
@@ -109,7 +112,6 @@ function Pratique() {
                 <div><label htmlFor="practice-end">Fin</label><input id="practice-end" type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} /></div>
                 <div><label htmlFor="practice-forgiveness">Membres absents acceptés</label><input id="practice-forgiveness" type="number" min="0" max="20" value={forgiveness} onChange={(event) => setForgiveness(Number(event.target.value))} /></div>
                 <div><label htmlFor="practice-sort">Classer les résultats</label><select id="practice-sort" value={sortMode} onChange={(event) => setSortMode(event.target.value as "nearest" | "songs")}><option value="nearest">Plus proches de la date</option><option value="songs">Plus de chansons</option></select></div>
-                <button className="member-save-button" type="button" onClick={generateFirstResults} disabled={generating || !selectedSpreadsheet || !selectedSetlist || availabilityDates.length === 0}>{generating ? "Calcul..." : "Suggérer des pratiques"}</button>
             </div>
             {setlists.length === 0 && !loading && <p className="empty-members">Aucune setlist trouvée.</p>}
             {candidates.length > 0 && <PracticeResults candidates={candidates} onSelect={openSchedule} />}
