@@ -7,6 +7,7 @@ interface Member {
     name: string;
     instrument?: string;
     instruments?: string[];
+    actif: boolean;
     updatedAt?: string;
 }
 
@@ -16,11 +17,17 @@ function getMemberInstruments(member: Member) {
     return [...(member.instruments ?? (member.instrument ? [member.instrument] : []))].sort((left, right) => left.localeCompare(right, "fr"));
 }
 
+function getAuthHeaders(): Record<string, string> {
+    const accessToken = sessionStorage.getItem("polyjam-google-access-token");
+    return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+}
+
 function Membres() {
     const [members, setMembers] = useState<Member[]>([]);
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [selectedInstruments, setSelectedInstruments] = useState<string[]>([]);
+    const [actif, setActif] = useState(true);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,7 +39,7 @@ function Membres() {
     const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
-        fetch("/api/members")
+        fetch("/api/members", { headers: getAuthHeaders() })
             .then((response) => {
                 if (!response.ok) throw new Error();
                 return response.json() as Promise<Member[]>;
@@ -44,8 +51,10 @@ function Membres() {
 
     async function saveMember(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        const trimmedName = `${firstName.trim()} ${lastName.trim()}`.trim();
-        if (!trimmedName || selectedInstruments.length === 0) return;
+        const trimmedFirstName = firstName.trim();
+        const trimmedLastName = lastName.trim();
+        const trimmedName = `${trimmedFirstName} ${trimmedLastName}`.trim();
+        if (!trimmedFirstName || !trimmedLastName || /\s/.test(trimmedFirstName) || trimmedFirstName.length > 20 || trimmedLastName.length > 20 || selectedInstruments.length === 0) return;
 
         setSaving(true);
         setError(null);
@@ -55,8 +64,8 @@ function Membres() {
         try {
             const response = await fetch(`/api/members/${memberId}/instrument`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: trimmedName, instruments: selectedInstruments }),
+                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+                body: JSON.stringify({ name: trimmedName, instruments: selectedInstruments, actif }),
             });
             if (!response.ok) {
                 const details = await response.json() as { error?: string };
@@ -85,6 +94,7 @@ function Membres() {
         setFirstName(nameParts.shift() ?? "");
         setLastName(nameParts.join(" "));
         setSelectedInstruments(getMemberInstruments(member));
+        setActif(member.actif !== false);
         setEditingMember(member);
         setIsModalOpen(true);
     }
@@ -95,7 +105,7 @@ function Membres() {
         setError(null);
         setSuccess(null);
         try {
-            const response = await fetch(`/api/members/${member.memberId}`, { method: "DELETE" });
+            const response = await fetch(`/api/members/${member.memberId}`, { method: "DELETE", headers: getAuthHeaders() });
             if (!response.ok) throw new Error();
             const result = await response.json() as { message?: string };
             setMembers((currentMembers) => currentMembers.filter((item) => item.memberId !== member.memberId));
@@ -139,6 +149,7 @@ function Membres() {
                 setFirstName("");
                 setLastName("");
                 setSelectedInstruments([]);
+                setActif(true);
                 setIsModalOpen(true);
             }}>
                 <span aria-hidden="true">＋</span> Ajouter un membre
@@ -152,6 +163,7 @@ function Membres() {
                     type="search"
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
+                    maxLength={20}
                     placeholder="Nom du membre"
                 />
                 <label htmlFor="member-sort-select">Trier par</label>
@@ -179,11 +191,11 @@ function Membres() {
                         <form className="member-form" onSubmit={saveMember}>
                             <div>
                                 <label htmlFor="member-first-name">Prénom</label>
-                                <input id="member-first-name" value={firstName} onChange={(event) => setFirstName(event.target.value)} maxLength={50} required autoFocus />
+                                <input id="member-first-name" value={firstName} onChange={(event) => setFirstName(event.target.value.replace(/\s/g, ""))} maxLength={20} required autoFocus />
                             </div>
                             <div>
                                 <label htmlFor="member-last-name">Nom</label>
-                                <input id="member-last-name" value={lastName} onChange={(event) => setLastName(event.target.value)} maxLength={50} required />
+                                <input id="member-last-name" value={lastName} onChange={(event) => setLastName(event.target.value)} maxLength={20} required />
                             </div>
                             <div>
                                 <label htmlFor="member-instrument">Instrument</label>
@@ -198,6 +210,13 @@ function Membres() {
                                         {instruments.filter((option) => !selectedInstruments.includes(option)).map((option) => <option key={option}>{option}</option>)}
                                     </select>
                                 </div>
+                            </div>
+                            <div>
+                                <label htmlFor="member-status">Statut</label>
+                                <select id="member-status" value={actif ? "actif" : "ancien"} onChange={(event) => setActif(event.target.value === "actif")}>
+                                    <option value="actif">Actif</option>
+                                    <option value="ancien">Ancien</option>
+                                </select>
                             </div>
                             <div className="modal-actions">
                                 <button className="modal-cancel" type="button" onClick={() => setIsModalOpen(false)}>Annuler</button>
@@ -216,7 +235,12 @@ function Membres() {
                         <article className="member-card" key={member.memberId}>
                             <div className="member-avatar">{member.name.charAt(0).toUpperCase()}</div>
                             <div className="member-card-content">
-                                <strong>{member.name}</strong>
+                                <div className="member-card-heading">
+                                    <strong>{member.name}</strong>
+                                    <span className={`member-status ${member.actif === false ? "member-status-old" : "member-status-active"}`}>
+                                        {member.actif === false ? "Ancien" : "Actif"}
+                                    </span>
+                                </div>
                                 <div className="member-instruments">
                                     {getMemberInstruments(member).map((option) => <span className="instrument-chip" key={option}>{option}</span>)}
                                 </div>

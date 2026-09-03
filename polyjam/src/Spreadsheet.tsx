@@ -1,4 +1,14 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { validateSpreadsheetFormat } from "./spreadsheetFormat";
+
+interface Member {
+    memberId: string;
+    name: string;
+    instrument?: string;
+    instruments?: string[];
+    actif: boolean;
+}
 
 interface Person {
     name: string;
@@ -14,17 +24,25 @@ interface DateEntry {
 interface SpreadsheetProps {
     url: string;
     accessToken?: string;
+    onTokenExpired: () => void;
 }
 
-function Spreadsheet({ url, accessToken }: SpreadsheetProps) {
+function Spreadsheet({ url, accessToken, onTokenExpired }: SpreadsheetProps) {
     const [data, setData] = useState<DateEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [monthCursor, setMonthCursor] = useState("");
+    const [members, setMembers] = useState<Member[]>([]);
 
     useEffect(() => {
         readSpreadsheet();
+        fetch("/api/members", {
+            headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        })
+            .then((response) => response.ok ? response.json() as Promise<Member[]> : [])
+            .then(setMembers)
+            .catch(() => setMembers([]));
     }, [url, accessToken]);
 
     const readSpreadsheet = async () => {
@@ -41,6 +59,10 @@ function Spreadsheet({ url, accessToken }: SpreadsheetProps) {
             );
 
             if (!response.ok) {
+                if (response.status === 401) {
+                    onTokenExpired();
+                    return;
+                }
                 const details = await response.json().catch(() => null) as {
                     error?: { message?: string };
                 } | null;
@@ -51,18 +73,12 @@ function Spreadsheet({ url, accessToken }: SpreadsheetProps) {
                 );
             }
 
-            const result = await response.json() as { values?: unknown[][] };
-            const rows = result.values ?? [];
+            const rows = await validateSpreadsheetFormat(response);
 
             // Row 5 = header
             const headerRowIndex = 4;
             const headerRow = rows[headerRowIndex];
 
-            if (!headerRow) {
-                throw new Error(
-                    "Could not find the header row."
-                );
-            }
 
             /*
              * Column A = Date
@@ -87,6 +103,7 @@ function Spreadsheet({ url, accessToken }: SpreadsheetProps) {
                 }
             }
 
+
             const parsedData: DateEntry[] = [];
 
             // Start at row 6
@@ -97,7 +114,7 @@ function Spreadsheet({ url, accessToken }: SpreadsheetProps) {
             ) {
                 const row = rows[rowIndex];
 
-                if (!row || !row[0]) {
+                if (!Array.isArray(row) || !row[0]) {
                     continue;
                 }
 
@@ -186,6 +203,7 @@ function Spreadsheet({ url, accessToken }: SpreadsheetProps) {
         month: "long",
         year: "numeric",
     });
+    const memberLabels = createMemberLabels(members);
 
     function changeMonth(offset: number) {
         const nextMonth = new Date(
@@ -200,6 +218,11 @@ function Spreadsheet({ url, accessToken }: SpreadsheetProps) {
         );
     }
 
+    function goToToday() {
+        setMonthCursor(today.slice(0, 7));
+        setSelectedDate(today);
+    }
+
     return (
         <div className="availability-view">
             <div className="calendar-toolbar">
@@ -208,11 +231,14 @@ function Spreadsheet({ url, accessToken }: SpreadsheetProps) {
                     <h2>{monthLabel}</h2>
                 </div>
                 <div className="month-controls">
+                    <button className="today-button" type="button" onClick={goToToday}>
+                        Aujourd'hui
+                    </button>
                     <button type="button" onClick={() => changeMonth(-1)} aria-label="Mois précédent">
-                        &#8592;
+                        <span className="month-arrow" aria-hidden="true">&#8592;</span>
                     </button>
                     <button type="button" onClick={() => changeMonth(1)} aria-label="Mois suivant">
-                        &#8594;
+                        <span className="month-arrow" aria-hidden="true">&#8594;</span>
                     </button>
                 </div>
             </div>
@@ -271,11 +297,13 @@ function Spreadsheet({ url, accessToken }: SpreadsheetProps) {
                             {selectedPeople.length > 0 ? selectedPeople.map((person) => (
                                 <div className="person-row" key={person.name}>
                                     <span className="person-dot" />
-                                    <strong>{person.name}</strong>
-                                    <span>{person.availability}</span>
+                                    <strong>{getPersonDisplayName(person.name, members, memberLabels)}</strong>
+                                    <span className="person-availability">{person.availability}</span>
+                                    <PersonProfileDetails name={person.name} members={members} memberLabels={memberLabels} />
                                 </div>
                             )) : <p>Aucune disponibilité enregistrée pour cette date.</p>}
                         </div>
+                        <Link className="primary-action practice-action" to={`/pratique?date=${selectedDate}`}>Ouvrir la pratique</Link>
                     </>
                 ) : <p>Sélectionnez une date pour voir les personnes disponibles.</p>}
             </section>
@@ -287,6 +315,96 @@ const weekdays = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
 function getAvailablePeople(entry: DateEntry) {
     return entry.people.filter((person) => availabilityScore(person.availability) > 0);
+}
+
+function getMemberInstruments(member: Member) {
+    return [...(member.instruments ?? (member.instrument ? [member.instrument] : []))]
+        .sort((left, right) => left.localeCompare(right, "fr"));
+}
+
+function normalizeName(name: string) {
+    return name.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr").replace(/\s+/g, " ");
+}
+
+function getNameParts(name: string) {
+    const parts = name.trim().split(/\s+/);
+    return {
+        firstName: parts[0] ?? "",
+        lastName: parts.slice(1).join(" "),
+    };
+}
+
+function createMemberLabels(members: Member[]) {
+    const groups = new Map<string, Member[]>();
+    members.forEach((member) => {
+        const { firstName } = getNameParts(member.name);
+        const key = normalizeName(firstName);
+        groups.set(key, [...(groups.get(key) ?? []), member]);
+    });
+
+    const labels = new Map<string, string>();
+    groups.forEach((group) => {
+        group.forEach((member) => {
+            const { firstName, lastName } = getNameParts(member.name);
+            if (group.length === 1 || !lastName) {
+                labels.set(member.memberId, member.name);
+                return;
+            }
+
+            let label = member.name;
+            for (let length = 1; length <= lastName.length; length++) {
+                const candidate = `${firstName} ${lastName.slice(0, length)}`;
+                const candidateKey = normalizeName(candidate);
+                const matches = group.filter((otherMember) => {
+                    const otherParts = getNameParts(otherMember.name);
+                    return normalizeName(`${otherParts.firstName} ${otherParts.lastName.slice(0, length)}`) === candidateKey;
+                });
+                if (matches.length === 1) {
+                    label = candidate;
+                    break;
+                }
+            }
+            labels.set(member.memberId, label);
+        });
+    });
+    return labels;
+}
+
+function findMember(name: string, members: Member[], labels: Map<string, string>) {
+    const nameKey = normalizeName(name);
+    const exactMember = members.find((member) => normalizeName(member.name) === nameKey);
+    if (exactMember) return exactMember;
+
+    const labeledMember = members.find((member) => normalizeName(labels.get(member.memberId) ?? "") === nameKey);
+    if (labeledMember) return labeledMember;
+
+    const { firstName } = getNameParts(name);
+    const firstNameMatches = members.filter((member) => normalizeName(getNameParts(member.name).firstName) === normalizeName(firstName));
+    return firstNameMatches.length === 1 ? firstNameMatches[0] : undefined;
+}
+
+function getPersonDisplayName(name: string, members: Member[], labels: Map<string, string>) {
+    const member = findMember(name, members, labels);
+    return member?.name ?? name;
+}
+
+function PersonProfileDetails({ name, members, memberLabels }: { name: string; members: Member[]; memberLabels: Map<string, string> }) {
+    const member = findMember(name, members, memberLabels);
+    const memberInstruments = member ? getMemberInstruments(member) : [];
+
+    if (memberInstruments.length === 0) {
+        return (
+            <span className="person-instruments missing">
+                <Link to="/membres">Instrument à renseigner dans Membres</Link>
+            </span>
+        );
+    }
+
+    return (
+        <span className="person-instruments">
+            {memberInstruments.map((instrument) => <span className="instrument-chip" key={instrument}>{instrument}</span>)}
+        </span>
+    );
 }
 
 function availabilityScore(value: string) {

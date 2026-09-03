@@ -156,6 +156,25 @@ code {
   opacity: 0.6;
 }
 
+.spreadsheet-refresh-button {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-h);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  padding: 9px 12px;
+}
+
+.spreadsheet-refresh-button:hover,
+.spreadsheet-refresh-button:focus-visible {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  outline: 2px solid rgba(71, 119, 168, 0.2);
+  outline-offset: 1px;
+}
+
 .picker-notice,
 .picker-error {
   color: var(--text);
@@ -199,15 +218,27 @@ code {
 }
 
 .month-controls button {
-  width: 42px;
-  height: 38px;
+  align-items: center;
+  background: var(--bg);
   border: 1px solid var(--border);
+  height: 38px;
   border-radius: 4px;
   color: var(--text-h);
-  background: var(--bg);
   cursor: pointer;
-  font-size: 20px;
+  display: inline-flex;
+  font-size: 25px;
+  justify-content: center;
   line-height: 1;
+  width: 42px;
+}
+
+.month-controls .today-button {
+  padding: 0 12px;
+  width: auto;
+}
+
+.month-arrow {
+  transform: translateY(-4px);
 }
 
 .month-controls button:hover,
@@ -239,6 +270,42 @@ code {
 .person-dot {
   display: inline-block;
   flex: 0 0 auto;
+}
+
+.practice-action {
+  margin-top: 18px;
+}
+
+.pratique-form {
+  align-items: end;
+  background: var(--accent-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(160px, 1fr) minmax(200px, 1.4fr) auto;
+  padding: 20px;
+}
+
+.pratique-form label {
+  color: var(--text);
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.pratique-form input,
+.pratique-form select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+  padding: 10px;
+  width: 100%;
 }
 
 .legend-swatch {
@@ -282,7 +349,7 @@ button.calendar-day {
 
 button.calendar-day:hover,
 button.calendar-day:focus-visible {
-  border-color: #4777a8;
+  border-color: #000;
   outline: none;
 }
 
@@ -368,13 +435,34 @@ button.calendar-day.level-0 {
   align-items: center;
   display: grid;
   gap: 10px;
-  grid-template-columns: 8px minmax(100px, 160px) 1fr;
+  grid-template-columns: 8px minmax(100px, 160px) minmax(120px, 1fr) minmax(180px, 1.5fr);
   padding: 8px 0;
 }
 
-.person-row span:last-child {
+.person-availability {
   color: var(--text);
   font-size: 14px;
+}
+
+.person-instruments {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.person-instruments .instrument-chip {
+  font-size: 11px;
+  padding: 3px 6px;
+}
+
+.person-instruments.missing {
+  font-size: 12px;
+}
+
+.person-instruments.missing a {
+  color: var(--accent);
 }
 
 .person-dot {
@@ -416,6 +504,10 @@ button.calendar-day.level-0 {
     gap: 14px;
   }
 
+  .pratique-form {
+    grid-template-columns: 1fr;
+  }
+
   .drive-picker-button {
     width: 100%;
   }
@@ -451,7 +543,8 @@ button.calendar-day.level-0 {
     grid-template-columns: 8px 1fr;
   }
 
-  .person-row span:last-child {
+  .person-availability,
+  .person-instruments {
     grid-column: 2;
   }
 }
@@ -473,6 +566,93 @@ body {
 
 .drive-app {
   min-height: 100svh;
+}
+
+.site-footer {
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  padding: 18px 24px;
+  text-align: center;
+}
+
+.signin-page {
+  background: var(--bg);
+  color: var(--text-h);
+  min-height: 100svh;
+}
+
+.signin-header {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  height: 64px;
+  justify-content: space-between;
+  padding: 0 24px;
+}
+
+.signin-header img {
+  display: block;
+  height: 36px;
+  object-fit: contain;
+  width: 208px;
+}
+
+.signin-content {
+  margin: 0 auto;
+  max-width: 440px;
+  padding: 15vh 24px;
+  text-align: center;
+}
+
+.signin-logo {
+  display: block;
+  height: auto;
+  margin: 0 auto 32px;
+  max-width: 280px;
+  width: 100%;
+}
+
+.signin-content h1 {
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  margin: 0 0 16px;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+
+.signin-content > p {
+  color: var(--text);
+  letter-spacing: 0.02em;
+  line-height: 1.7;
+  margin: 0 auto 32px;
+  max-width: 36ch;
+  overflow-wrap: break-word;
+}
+
+.signin-content .google-sign-in-wrap {
+  align-items: center;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .signin-header {
+    padding: 0 16px;
+  }
+
+  .signin-header img {
+    max-width: calc(100% - 56px);
+    width: 180px;
+  }
+
+  .signin-content {
+    padding: 12vh 20px;
+  }
+
+  .signin-logo {
+    max-width: 240px;
+  }
 }
 
 .logo-area {
@@ -716,14 +896,14 @@ body {
 }
 
 .theme-light .calendar-day.today {
-  border-color: #e67e22;
-  box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.2), 0 4px 10px rgba(196, 95, 18, 0.22);
+  border-color: #000;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.2), 0 4px 10px rgba(0, 0, 0, 0.22);
 }
 
 .theme-light .calendar-day.today span,
 .theme-light .calendar-day.today.selected span,
 .theme-light .calendar-day.today.selected strong {
-  color: #c45f12;
+  color: #000;
 }
 
 .theme-dark .logo-area {
@@ -779,6 +959,37 @@ body {
 }
 
 @media (max-width: 720px) {
+  .setlists-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .setlist-song {
+    grid-template-columns: minmax(0, 1fr) 65px;
+  }
+
+  .setlist-song span {
+    grid-column: 1;
+  }
+
+  .setlist-song > .song-card-actions {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .song-card {
+    align-items: start;
+    grid-template-columns: 1fr;
+  }
+
+  .song-list-header {
+    display: none;
+  }
+
+  .drive-home {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
   .theme-toggle {
     font-size: 0;
     gap: 0;
@@ -1003,6 +1214,21 @@ body {
   max-width: 1120px;
 }
 
+.drive-home {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 1120px;
+}
+
+.drive-home > .drive-breadcrumb {
+  grid-column: 1 / -1;
+}
+
+.drive-home > .document-heading {
+  grid-column: 1 / -1;
+}
+
 .drive-breadcrumb {
   align-items: center;
   color: #5f6368;
@@ -1049,13 +1275,26 @@ body {
   text-decoration: none;
 }
 
+.drive-home .navigation-card {
+  box-sizing: border-box;
+  flex-direction: row;
+  min-height: 64px;
+  max-width: none;
+  width: min(100%, 420px);
+}
+
+.drive-home .navigation-card .file-icon {
+  flex: 0 0 32px;
+  text-align: center;
+}
+
 .drive-file-card:hover {
   border-color: #a8c7fa;
   box-shadow: 0 1px 3px rgba(60, 64, 67, 0.2);
 }
 
 .navigation-card + .navigation-card {
-  margin-top: 10px;
+  margin-top: 0;
 }
 
 .member-form {
@@ -1068,6 +1307,151 @@ body {
   grid-template-columns: minmax(180px, 1fr) minmax(140px, 190px) auto;
   margin-bottom: 28px;
   padding: 18px;
+}
+
+.setlists-layout {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.setlists-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setlists-sidebar .member-add-button {
+  margin: 0 0 8px;
+  width: 100%;
+}
+
+.setlist-list-item {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-h);
+  cursor: pointer;
+  font: inherit;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.setlist-list-item:hover,
+.setlist-list-item.selected {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+}
+
+.setlist-editor {
+  min-width: 0;
+}
+
+.songs-list {
+  border-top: 1px solid var(--border);
+}
+
+.song-list-header {
+  color: var(--text);
+  display: grid;
+  font-size: 11px;
+  font-weight: 700;
+  gap: 8px 20px;
+  grid-template-columns: minmax(140px, 1.5fr) minmax(140px, 1fr) minmax(140px, 1fr) 65px;
+  letter-spacing: 0.04em;
+  padding: 10px 0 6px;
+  text-transform: uppercase;
+}
+
+.song-card {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  gap: 8px 20px;
+  grid-template-columns: minmax(140px, 1.5fr) minmax(140px, 1fr) minmax(140px, 1fr) 65px;
+  padding: 14px 0;
+}
+
+.song-card span {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.song-card-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.setlist-name-form,
+.song-form {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.setlist-name-form label,
+.song-form label {
+  color: var(--text);
+  flex: 1 0 100%;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.setlist-name-form input,
+.song-form input,
+.song-form select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.setlist-name-form input {
+  flex: 1;
+}
+
+.setlist-songs {
+  border-top: 1px solid var(--border);
+  margin-bottom: 28px;
+}
+
+.setlist-song {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  gap: 8px 16px;
+  grid-template-columns: minmax(120px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) 65px;
+  padding: 12px 0;
+}
+
+.setlist-songs .song-list-header {
+  gap: 8px 16px;
+  grid-template-columns: minmax(120px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) 65px;
+}
+
+.setlist-song span {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.setlist-song > .song-card-actions {
+  grid-column: 4;
+  grid-row: 1 / span 2;
+}
+
+.song-form input {
+  flex: 1 1 180px;
+}
+
+.song-form select {
+  flex: 1 1 140px;
 }
 
 .member-form label,
@@ -1118,6 +1502,50 @@ body {
   padding: 5px;
 }
 
+.staff-picker {
+  align-items: stretch;
+}
+
+.staff-search {
+  background: transparent;
+  border: 0;
+  color: var(--text-h);
+  flex: 1 0 100%;
+  font: inherit;
+  font-size: 14px;
+  min-width: 0;
+  outline: 0;
+  padding: 5px;
+}
+
+.staff-options {
+  display: flex;
+  flex: 1 0 100%;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 150px;
+  overflow-y: auto;
+  padding-top: 4px;
+}
+
+.staff-option {
+  background: var(--bg);
+  border: 0;
+  color: var(--text-h);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  padding: 7px;
+  text-align: left;
+}
+
+.staff-option:hover,
+.staff-option:focus-visible,
+.staff-option.highlighted {
+  background: var(--accent-bg);
+  outline: 0;
+}
+
 .instrument-chip {
   background: var(--accent-bg);
   border: 1px solid var(--accent-border);
@@ -1149,15 +1577,23 @@ button.instrument-chip:hover {
   padding: 0;
 }
 
-.member-edit-button {
+.member-edit-button,
+.member-delete-button {
+  align-items: center;
   background: transparent;
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--text-h);
   cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 30px;
   font: inherit;
   font-size: 12px;
-  padding: 4px 7px;
+  height: 30px;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  width: 30px;
 }
 
 .member-edit-button:hover,
@@ -1399,6 +1835,37 @@ button.instrument-chip:hover {
   margin: 0;
 }
 
+.member-card-heading {
+  align-items: center;
+  display: flex;
+  flex: 0 1 180px;
+  gap: 8px;
+  min-width: 0;
+}
+
+.members-list .member-card-heading > strong {
+  flex: 1;
+  min-width: 0;
+}
+
+.member-status {
+  border-radius: 999px;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 7px;
+}
+
+.member-status-active {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.member-status-old {
+  background: #f1f3f4;
+  color: #5f6368;
+}
+
 .members-list .member-instruments {
   flex: 1;
 }
@@ -1456,10 +1923,17 @@ button.instrument-chip:hover {
   width: 30px;
 }
 
-.member-delete-button {
+.theme-dark .member-delete-button {
   background: transparent;
   border: 1px solid var(--border);
-  color: #4b6f96;
+  cursor: pointer;
+  font: inherit;
+  font-size: 18px;
+}
+
+.theme-light .member-delete-button {
+  background: transparent;
+  border: 1px solid var(--border);
   cursor: pointer;
   font: inherit;
   font-size: 18px;
@@ -1809,12 +2283,12 @@ body.theme-dark .calendar-day.level-4 {
 }
 
 body.theme-dark button.calendar-day.today {
-  border-color: #8ab4f8;
-  box-shadow: 0 0 0 3px rgba(138, 180, 248, 0.2), 0 4px 10px rgba(0, 0, 0, 0.35);
+  border-color: #000;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.2), 0 4px 10px rgba(0, 0, 0, 0.35);
 }
 
 body.theme-dark button.calendar-day.today span,
 body.theme-dark button.calendar-day.today.selected span,
 body.theme-dark button.calendar-day.today.selected strong {
-  color: #8ab4f8;
+  color: #000;
 }

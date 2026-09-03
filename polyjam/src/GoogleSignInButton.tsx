@@ -64,12 +64,18 @@ function GoogleSignInButton({ onConnected }: GoogleSignInButtonProps) {
                     const profileResponse = await fetch("/api/google/profile", {
                         headers: { Authorization: `Bearer ${response.access_token}` },
                     });
+                    if (profileResponse.status === 403) {
+                        setError("Ce compte Google n'est pas autorisé.");
+                        return;
+                    }
                     if (!profileResponse.ok) throw new Error();
                     const profile = await profileResponse.json() as GoogleProfile;
                     sessionStorage.setItem("polyjam-google-access-token", response.access_token);
+                    const expiresIn = response.expires_in ?? 3600;
+                    sessionStorage.setItem("polyjam-google-token-expires-at", String(Date.now() + expiresIn * 1000));
                     sessionStorage.setItem("polyjam-google-profile", JSON.stringify(profile));
                     onConnected(profile);
-                    window.location.reload();
+                    window.location.assign("/");
                 } catch {
                     setError("Impossible de récupérer le compte Google.");
                 }

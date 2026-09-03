@@ -80,6 +80,7 @@ function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
                     return;
                 }
                 sessionStorage.setItem("polyjam-google-access-token", accessToken);
+                sessionStorage.setItem("polyjam-google-token-expires-at", String(Date.now() + (response.expires_in ?? 3600) * 1000));
                 showPicker(accessToken);
             },
         });

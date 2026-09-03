@@ -1,18 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import GoogleDrivePicker from "./GoogleDrivePicker";
 import Spreadsheet from "./Spreadsheet";
-
-interface SelectedSpreadsheet {
-    id: string;
-    name: string;
-    accessToken?: string;
-}
+import SpreadsheetSelector, { type SelectedSpreadsheet } from "./SpreadsheetSelector";
 
 function Dispo() {
     const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<SelectedSpreadsheet | null>(
         getStoredSpreadsheet
     );
+    const [refreshCount, setRefreshCount] = useState(0);
     const spreadsheetUrl = selectedSpreadsheet
         ? `/api/spreadsheets/${selectedSpreadsheet.id}/values?range=${encodeURIComponent("'Dispos'!A:ZZ")}`
         : "";
@@ -28,17 +23,35 @@ function Dispo() {
 
     function selectSpreadsheet(file: SelectedSpreadsheet) {
         setSelectedSpreadsheet(file);
-        localStorage.setItem(
-            "polyjam-selected-spreadsheet",
-            JSON.stringify({ id: file.id, name: file.name })
-        );
-        sessionStorage.setItem(`polyjam-token-${file.id}`, file.accessToken ?? "");
         window.history.pushState(
             null,
             "",
             `/dispo?file=${encodeURIComponent(file.id)}&name=${encodeURIComponent(file.name)}`
         );
     }
+
+    function clearSelectedSpreadsheet() {
+        const parameters = new URLSearchParams(window.location.search);
+        const selectedId = parameters.get("file") ?? getStoredSpreadsheetId();
+        localStorage.removeItem("polyjam-selected-spreadsheet");
+        if (selectedId) {
+            sessionStorage.removeItem(`polyjam-token-${selectedId}`);
+            sessionStorage.removeItem(`polyjam-token-expires-at-${selectedId}`);
+        }
+        window.history.replaceState(null, "", "/dispo");
+        window.location.reload();
+    }
+
+    useEffect(() => {
+        function refreshIfSpreadsheetTokenExpired() {
+            if (!selectedSpreadsheet) return;
+            const expiresAt = Number(sessionStorage.getItem(`polyjam-token-expires-at-${selectedSpreadsheet.id}`));
+            if (Number.isFinite(expiresAt) && expiresAt <= Date.now()) clearSelectedSpreadsheet();
+        }
+
+        window.addEventListener("focus", refreshIfSpreadsheetTokenExpired);
+        return () => window.removeEventListener("focus", refreshIfSpreadsheetTokenExpired);
+    }, [selectedSpreadsheet]);
 
     return (
         <div className="drive-document">
@@ -50,16 +63,10 @@ function Dispo() {
                 <button className="document-action" type="button" aria-label="Ajouter aux favoris">☆</button>
             </div>
 
-            <div className="spreadsheet-selector">
-                <div>
-                    <p className="eyebrow">Fichier selectionné</p>
-                    <strong>{selectedSpreadsheet?.name ?? "Aucun fichier sélectionné"}</strong>
-                </div>
-                <GoogleDrivePicker onFileSelected={selectSpreadsheet} />
-            </div>
+            <SpreadsheetSelector selectedSpreadsheet={selectedSpreadsheet} onFileSelected={selectSpreadsheet} onRefresh={() => setRefreshCount((current) => current + 1)} />
 
             {selectedSpreadsheet ? (
-                <Spreadsheet url={spreadsheetUrl} accessToken={selectedSpreadsheet.accessToken} />
+                <Spreadsheet key={refreshCount} url={spreadsheetUrl} accessToken={selectedSpreadsheet.accessToken} onTokenExpired={clearSelectedSpreadsheet} />
             ) : (
                 <p className="picker-notice">Choisissez un fichier Google Drive pour afficher son calendrier.</p>
             )}
@@ -84,6 +91,15 @@ function getStoredSpreadsheet(): SelectedSpreadsheet | null {
         };
     } catch {
         return null;
+    }
+}
+
+function getStoredSpreadsheetId() {
+    try {
+        const stored = localStorage.getItem("polyjam-selected-spreadsheet");
+        return stored ? (JSON.parse(stored) as { id?: string }).id : undefined;
+    } catch {
+        return undefined;
     }
 }
 
