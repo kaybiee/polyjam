@@ -5,6 +5,7 @@ import Membres from "./Membres";
 import Setlists from "./Setlists";
 import Songs from "./Songs";
 import Pratique from "./Pratique";
+import PracticeSchedule from "./PracticeSchedule";
 import GoogleSignInButton from "./GoogleSignInButton";
 import SignInPage from "./SignInPage";
 import darkLogo from "./assets/polyjamdarkmode.png";
@@ -31,7 +32,6 @@ export default function App() {
   const isDark = theme === "dark";
   const location = useLocation();
   const navigate = useNavigate();
-  const [authChecking, setAuthChecking] = useState(true);
 
   useEffect(() => {
     document.body.classList.remove("theme-light", "theme-dark");
@@ -45,8 +45,6 @@ export default function App() {
       sessionStorage.removeItem("polyjam-google-profile");
       sessionStorage.removeItem("polyjam-google-access-token");
       sessionStorage.removeItem("polyjam-google-token-expires-at");
-      setGoogleProfile(null);
-      setAuthChecking(false);
       if (location.pathname !== "/signin") navigate("/signin", { replace: true });
       return;
     }
@@ -78,8 +76,6 @@ export default function App() {
         setGoogleProfile(null);
         navigate("/signin", { replace: true });
       })
-      .finally(() => setAuthChecking(false));
-
       return () => window.clearTimeout(expiryTimer);
   }, [location.pathname, navigate]);
 
@@ -97,7 +93,7 @@ export default function App() {
     window.location.reload();
   }
 
-  if (authChecking || !googleProfile || location.pathname === "/signin") {
+  if (!googleProfile || location.pathname === "/signin") {
     return <SignInPage isDark={isDark} onToggleTheme={toggleTheme} />;
   }
 
@@ -178,6 +174,7 @@ export default function App() {
         <Route path="/setlists" element={<Setlists />} />
         <Route path="/songs" element={<Songs />} />
         <Route path="/pratique" element={<Pratique />} />
+        <Route path="/pratique/schedule" element={<PracticeSchedule />} />
       </Routes>
         </main>
       </div>

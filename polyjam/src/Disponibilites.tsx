@@ -5,7 +5,7 @@ import SpreadsheetSelector, { type SelectedSpreadsheet } from "./SpreadsheetSele
 
 function Dispo() {
     const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<SelectedSpreadsheet | null>(
-        getStoredSpreadsheet
+        getSpreadsheetFromUrl
     );
     const [refreshCount, setRefreshCount] = useState(0);
     const spreadsheetUrl = selectedSpreadsheet
@@ -32,7 +32,7 @@ function Dispo() {
 
     function clearSelectedSpreadsheet() {
         const parameters = new URLSearchParams(window.location.search);
-        const selectedId = parameters.get("file") ?? getStoredSpreadsheetId();
+        const selectedId = parameters.get("file");
         localStorage.removeItem("polyjam-selected-spreadsheet");
         if (selectedId) {
             sessionStorage.removeItem(`polyjam-token-${selectedId}`);
@@ -72,35 +72,6 @@ function Dispo() {
             )}
         </div>
     );
-}
-
-function getStoredSpreadsheet(): SelectedSpreadsheet | null {
-    const parameters = new URLSearchParams(window.location.search);
-    const stored = localStorage.getItem("polyjam-selected-spreadsheet");
-
-    try {
-        const parsed = stored ? JSON.parse(stored) as { id?: string; name?: string } : null;
-        const id = parameters.get("file") ?? parsed?.id;
-        const name = parameters.get("name") ?? parsed?.name;
-        if (!id || !name) return null;
-
-        return {
-            id,
-            name,
-            accessToken: sessionStorage.getItem(`polyjam-token-${id}`) || undefined,
-        };
-    } catch {
-        return null;
-    }
-}
-
-function getStoredSpreadsheetId() {
-    try {
-        const stored = localStorage.getItem("polyjam-selected-spreadsheet");
-        return stored ? (JSON.parse(stored) as { id?: string }).id : undefined;
-    } catch {
-        return undefined;
-    }
 }
 
 function getSpreadsheetFromUrl(): SelectedSpreadsheet | null {

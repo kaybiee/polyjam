@@ -7,6 +7,7 @@ interface Member {
     memberId: string;
     name: string;
     actif: boolean;
+    mainInstrument?: string;
 }
 
 interface Song {
@@ -14,6 +15,7 @@ interface Song {
     title: string;
     artist: string;
     staffMemberIds: string[];
+    staffInstruments: Record<string, string>;
 }
 
 interface Setlist {
@@ -100,7 +102,7 @@ function Setlists() {
         }
     }
 
-    async function addSong({ title, artist, staffMemberIds }: SongDraft, existingSongId?: string) {
+    async function addSong({ title, artist, staffMemberIds, staffInstruments }: SongDraft, existingSongId?: string) {
         if (!selectedSetlist) return;
         if (existingSongId) {
             await saveSetlistData({ ...selectedSetlist, songIds: [...selectedSetlist.songIds, existingSongId] });
@@ -108,7 +110,7 @@ function Setlists() {
             return;
         }
         if (!title || !artist || staffMemberIds.length === 0) return;
-        const song = { songId: editingSong?.songId ?? crypto.randomUUID(), title, artist, staffMemberIds };
+        const song = { songId: editingSong?.songId ?? crypto.randomUUID(), title, artist, staffMemberIds, staffInstruments };
         try {
             const songResponse = await fetch(`/api/songs/${song.songId}`, {
                 method: "PUT",
@@ -159,7 +161,7 @@ function Setlists() {
         return members.find((member) => member.memberId === memberId)?.name ?? "Membre introuvable";
     }
 
-    function memberNames(memberIds: string[]) {
+    function memberNames(memberIds: string[], staffInstruments: Record<string, string>) {
         return [...memberIds]
             .sort((leftId, rightId) => {
                 const leftName = memberName(leftId);
@@ -168,7 +170,7 @@ function Setlists() {
                 const rightFirstName = rightName.trim().split(/\s+/)[0] ?? "";
                 return leftFirstName.localeCompare(rightFirstName, "fr") || leftName.localeCompare(rightName, "fr");
             })
-            .map(memberName)
+            .map((memberId) => `${memberName(memberId)} (${staffInstruments[memberId] ?? members.find((member) => member.memberId === memberId)?.mainInstrument ?? "Instrument non défini"})`)
             .join(", ");
     }
 
@@ -194,11 +196,12 @@ function Setlists() {
                             <h2>Chansons</h2>
                             <div className="setlist-songs">
                                 <div className="song-list-header" aria-hidden="true"><span>Titre</span><span>Artiste</span><span>Staff</span><span></span></div>
-                                {selectedSetlist.songIds.map((songId) => songs.find((song) => song.songId === songId)).filter((song): song is Song => Boolean(song)).map((song) => <div className="setlist-song" key={song.songId}><strong>{song.title}</strong><span>{song.artist}</span><span>{memberNames(song.staffMemberIds)}</span><div className="song-card-actions"><button className="member-edit-button" type="button" onClick={() => { setEditingSong(song); setIsSongModalOpen(true); }} aria-label={`Modifier ${song.title}`} title="Modifier">✎</button><button className="member-delete-button" type="button" onClick={() => removeSong(song.songId)} aria-label={`Supprimer ${song.title}`} title="Supprimer">×</button></div></div>)}
+                                {selectedSetlist.songIds.map((songId) => songs.find((song) => song.songId === songId)).filter((song): song is Song => Boolean(song)).map((song) => <div className="setlist-song" key={song.songId}><strong>{song.title}</strong><span>{song.artist}</span><span>{memberNames(song.staffMemberIds, song.staffInstruments)}</span><div className="song-card-actions"><button className="member-edit-button" type="button" onClick={() => { setEditingSong(song); setIsSongModalOpen(true); }} aria-label={`Modifier ${song.title}`} title="Modifier">✎</button><button className="member-delete-button" type="button" onClick={() => removeSong(song.songId)} aria-label={`Supprimer ${song.title}`} title="Supprimer">×</button></div></div>)}
                                 {selectedSetlist.songIds.length === 0 && <p className="empty-members">Aucune chanson dans cette setlist.</p>}
                             </div>
                             <button className="member-add-button song-add-button" type="button" onClick={() => { setEditingSong(null); setIsSongModalOpen(true); }}>＋ Ajouter une chanson</button>
                             {isSongModalOpen && <SongModal
+                                key={editingSong?.songId ?? "new"}
                                 members={members}
                                 existingSongs={editingSong ? [] : songs.filter((song) => !selectedSetlist.songIds.includes(song.songId))}
                                 initialSong={editingSong ?? undefined}
@@ -228,6 +231,7 @@ function normalizeSong(song: Song & { artistMemberId?: string; staffMemberId?: s
         title: song.title,
         artist: song.artist ?? song.artistMemberId ?? "",
         staffMemberIds: song.staffMemberIds ?? (song.staffMemberId ? [song.staffMemberId] : []),
+        staffInstruments: song.staffInstruments ?? {},
     };
 }
 

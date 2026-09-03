@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { validateSpreadsheetFormat } from "./spreadsheetFormat";
 
@@ -7,6 +7,7 @@ interface Member {
     name: string;
     instrument?: string;
     instruments?: string[];
+    mainInstrument?: string;
     actif: boolean;
 }
 
@@ -35,17 +36,7 @@ function Spreadsheet({ url, accessToken, onTokenExpired }: SpreadsheetProps) {
     const [monthCursor, setMonthCursor] = useState("");
     const [members, setMembers] = useState<Member[]>([]);
 
-    useEffect(() => {
-        readSpreadsheet();
-        fetch("/api/members", {
-            headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-        })
-            .then((response) => response.ok ? response.json() as Promise<Member[]> : [])
-            .then(setMembers)
-            .catch(() => setMembers([]));
-    }, [url, accessToken]);
-
-    const readSpreadsheet = async () => {
+    const readSpreadsheet = useCallback(async () => {
         setLoading(true);
         setError(null);
 
@@ -162,7 +153,17 @@ function Spreadsheet({ url, accessToken, onTokenExpired }: SpreadsheetProps) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [accessToken, onTokenExpired, url]);
+
+    useEffect(() => {
+        window.setTimeout(() => { void readSpreadsheet(); }, 0);
+        fetch("/api/members", {
+            headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        })
+            .then((response) => response.ok ? response.json() as Promise<Member[]> : [])
+            .then(setMembers)
+            .catch(() => setMembers([]));
+    }, [accessToken, readSpreadsheet]);
 
     if (loading) {
         return <p className="status-message">Chargement des disponibilités...</p>;
@@ -303,7 +304,7 @@ function Spreadsheet({ url, accessToken, onTokenExpired }: SpreadsheetProps) {
                                 </div>
                             )) : <p>Aucune disponibilité enregistrée pour cette date.</p>}
                         </div>
-                        <Link className="primary-action practice-action" to={`/pratique?date=${selectedDate}`}>Ouvrir la pratique</Link>
+                        <Link className="primary-action practice-action" to={`/pratique?date=${selectedDate}&file=${encodeURIComponent(getSpreadsheetIdFromUrl())}&name=${encodeURIComponent(getSpreadsheetNameFromUrl())}`}>Ouvrir la pratique</Link>
                     </>
                 ) : <p>Sélectionnez une date pour voir les personnes disponibles.</p>}
             </section>
@@ -313,13 +314,25 @@ function Spreadsheet({ url, accessToken, onTokenExpired }: SpreadsheetProps) {
 
 const weekdays = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
+function getSpreadsheetIdFromUrl() {
+    return new URLSearchParams(window.location.search).get("file") ?? "";
+}
+
+function getSpreadsheetNameFromUrl() {
+    return new URLSearchParams(window.location.search).get("name") ?? "";
+}
+
 function getAvailablePeople(entry: DateEntry) {
     return entry.people.filter((person) => availabilityScore(person.availability) > 0);
 }
 
 function getMemberInstruments(member: Member) {
-    return [...(member.instruments ?? (member.instrument ? [member.instrument] : []))]
-        .sort((left, right) => left.localeCompare(right, "fr"));
+    const memberInstruments = [...(member.instruments ?? (member.instrument ? [member.instrument] : []))];
+    return memberInstruments.sort((left, right) => {
+        if (left === member.mainInstrument) return -1;
+        if (right === member.mainInstrument) return 1;
+        return left.localeCompare(right, "fr");
+    });
 }
 
 function normalizeName(name: string) {

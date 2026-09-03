@@ -75,7 +75,10 @@ app.get("/api/members", requireAllowedGoogleUser, async (_request, response) => 
         const result = members
             ? await members.find({}).sort({ name: 1 }).toArray()
             : [...fallbackMembers.values()].sort((left, right) => left.name.localeCompare(right.name));
-        response.json(result.map((member) => ({ ...member, actif: member.actif !== false })));
+        response.json(result.map((member) => {
+            const memberInstruments = member.instruments ?? (member.instrument ? [member.instrument] : []);
+            return { ...member, instruments: memberInstruments, mainInstrument: member.mainInstrument ?? (memberInstruments.length === 1 ? memberInstruments[0] : undefined), actif: member.actif !== false };
+        }));
     } catch (error) {
         console.error("Failed to read members", error);
         response.status(500).json({ error: "Impossible de charger les membres." });
@@ -111,17 +114,18 @@ app.put("/api/members/:memberId/instrument", requireAllowedGoogleUser, async (re
             ? [request.body.instrument.trim()]
             : [];
     const actif = typeof request.body?.actif === "boolean" ? request.body.actif : true;
+    const mainInstrument = typeof request.body?.mainInstrument === "string" ? request.body.mainInstrument.trim() : instruments.length === 1 ? instruments[0] : "";
 
     const nameParts = name.split(/\s+/);
     const firstName = nameParts[0] ?? "";
     const lastName = nameParts.slice(1).join(" ");
-    if (!memberId || !name || firstName.length > 20 || lastName.length > 20 || /\s/.test(firstName) || instruments.length === 0 || instruments.some((instrument) => !allowedInstruments.has(instrument))) {
+    if (!memberId || !name || firstName.length > 20 || lastName.length > 20 || /\s/.test(firstName) || instruments.length === 0 || instruments.some((instrument) => !allowedInstruments.has(instrument)) || !mainInstrument || !instruments.includes(mainInstrument)) {
         response.status(400).json({ error: "Membre ou instrument invalide." });
         return;
     }
 
     const nameKey = name.toLocaleLowerCase("fr");
-    const member = { memberId, name, nameKey, instruments: [...new Set(instruments)], actif, updatedAt: new Date().toISOString() };
+    const member = { memberId, name, nameKey, instruments: [...new Set(instruments)], mainInstrument, actif, updatedAt: new Date().toISOString() };
 
     try {
         if (members) {
@@ -170,6 +174,7 @@ app.get("/api/setlists", requireAllowedGoogleUser, async (_request, response) =>
                     title: song.title,
                     artist: song.artist ?? song.artistMemberId ?? "",
                     staffMemberIds: song.staffMemberIds ?? (song.staffMemberId ? [song.staffMemberId] : []),
+                                    staffInstruments: song.staffInstruments ?? {},
                 };
                 if (songs) await songs.replaceOne({ songId }, reusableSong, { upsert: true });
                 else fallbackSongs.set(songId, reusableSong);
@@ -201,6 +206,7 @@ app.get("/api/songs", requireAllowedGoogleUser, async (_request, response) => {
                 : song.staffMemberId
                     ? [song.staffMemberId]
                     : [],
+            staffInstruments: song.staffInstruments ?? {},
         })));
     } catch (error) {
         console.error("Failed to read songs", error);
@@ -219,6 +225,9 @@ app.put("/api/songs/:songId", requireAllowedGoogleUser, async (request, response
             : typeof request.body?.staffMemberId === "string" && request.body.staffMemberId
                 ? [request.body.staffMemberId]
                 : [],
+        staffInstruments: request.body?.staffInstruments && typeof request.body.staffInstruments === "object"
+            ? Object.fromEntries(Object.entries(request.body.staffInstruments).filter(([memberId, instrument]) => typeof memberId === "string" && typeof instrument === "string" && instrument.trim()).map(([memberId, instrument]) => [memberId, instrument.trim()]))
+            : {},
     };
     if (!songId || !song.title || song.title.length > 100 || !song.artist || song.artist.length > 100 || song.staffMemberIds.length === 0) {
         response.status(400).json({ error: "Chanson invalide." });

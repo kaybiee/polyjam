@@ -6,6 +6,8 @@ interface Member {
     memberId: string;
     name: string;
     actif: boolean;
+    instruments?: string[];
+    mainInstrument?: string;
 }
 
 interface Song {
@@ -13,6 +15,7 @@ interface Song {
     title: string;
     artist: string;
     staffMemberIds: string[];
+    staffInstruments: Record<string, string>;
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -48,7 +51,7 @@ function Songs() {
         return members.find((member) => member.memberId === memberId)?.name ?? "Membre introuvable";
     }
 
-    function memberNames(memberIds: string[]) {
+    function memberNames(memberIds: string[], staffInstruments: Record<string, string>) {
         return [...memberIds]
             .sort((leftId, rightId) => {
                 const leftName = memberName(leftId);
@@ -57,7 +60,7 @@ function Songs() {
                 const rightFirstName = rightName.trim().split(/\s+/)[0] ?? "";
                 return leftFirstName.localeCompare(rightFirstName, "fr") || leftName.localeCompare(rightName, "fr");
             })
-            .map(memberName)
+            .map((memberId) => `${memberName(memberId)} (${staffInstruments[memberId] ?? members.find((member) => member.memberId === memberId)?.mainInstrument ?? "Instrument non défini"})`)
             .join(", ");
     }
 
@@ -76,11 +79,11 @@ function Songs() {
         setIsModalOpen(true);
     }
 
-    async function addSong({ title, artist, staffMemberIds }: SongDraft) {
-        if (!title || !artist || staffMemberIds.length === 0) return;
+    async function addSong({ title, artist, staffMemberIds, staffInstruments }: SongDraft) {
+        if (!title || !artist || staffMemberIds.length === 0 || staffMemberIds.some((memberId) => !staffInstruments[memberId])) return;
         setError(null);
         setSuccess(null);
-        const song = { songId: editingSong?.songId ?? crypto.randomUUID(), title: title.trim(), artist: artist.trim(), staffMemberIds };
+        const song = { songId: editingSong?.songId ?? crypto.randomUUID(), title: title.trim(), artist: artist.trim(), staffMemberIds, staffInstruments };
         try {
             const response = await fetch(`/api/songs/${song.songId}`, {
                 method: "PUT",
@@ -146,7 +149,7 @@ function Songs() {
                         <article className="song-card" key={song.songId}>
                             <strong>{song.title}</strong>
                             <span>{song.artist}</span>
-                            <span>{memberNames(song.staffMemberIds)}</span>
+                            <span>{memberNames(song.staffMemberIds, song.staffInstruments)}</span>
                             <div className="song-card-actions">
                                 <button className="member-edit-button" type="button" onClick={() => openEditModal(song)} aria-label={`Modifier ${song.title}`} title="Modifier">✎</button>
                                 <button className="member-delete-button" type="button" onClick={() => deleteSong(song)} aria-label={`Supprimer ${song.title}`} title="Supprimer">🗑</button>
@@ -155,7 +158,7 @@ function Songs() {
                     )) : <p className="empty-members">{songs.length > 0 ? "Aucune chanson ne correspond à la recherche." : "Aucune chanson pour le moment."}</p>}
                 </div>
             )}
-            {isModalOpen && <SongModal members={members} isEditing={Boolean(editingSong)} onClose={closeModal} onSubmit={addSong} />}
+            {isModalOpen && <SongModal key={editingSong?.songId ?? "new"} members={members} initialSong={editingSong ?? undefined} isEditing={Boolean(editingSong)} onClose={closeModal} onSubmit={addSong} />}
         </div>
     );
 }
@@ -174,6 +177,7 @@ function normalizeSong(song: Song & { artistMemberId?: string; staffMemberId?: s
         title: song.title,
         artist: song.artist ?? song.artistMemberId ?? "",
         staffMemberIds: song.staffMemberIds ?? (song.staffMemberId ? [song.staffMemberId] : []),
+        staffInstruments: song.staffInstruments ?? {},
     };
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface GoogleDrivePickerProps {
     onFileSelected: (file: { id: string; name: string; accessToken: string }) => void;
@@ -38,31 +38,29 @@ function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
     const [error, setError] = useState<string | null>(null);
     const isConfigured = Boolean(clientId && apiKey);
 
-    useEffect(() => {
-        if (!isConfigured) return;
+    const showPicker = useCallback((accessToken: string) => {
+        if (!window.google || !apiKey) return;
 
-        Promise.all([
-            loadScript("https://accounts.google.com/gsi/client", "google-identity-script"),
-            loadScript("https://apis.google.com/js/api.js", "google-api-script"),
-        ])
-            .then(() => {
-                window.gapi?.load("picker", () => setReady(true));
+        const view = new window.google.picker.DocsView(window.google.picker.ViewId.SPREADSHEETS)
+            .setMimeTypes("application/vnd.google-apps.spreadsheet");
+        const picker = new window.google.picker.PickerBuilder()
+            .addView(view)
+            .setOAuthToken(accessToken)
+            .setDeveloperKey(apiKey)
+            .setCallback((pickerResponse) => {
+                if (pickerResponse.action === window.google!.picker.Action.PICKED && pickerResponse.docs?.[0]) {
+                    const file = pickerResponse.docs[0];
+                    onFileSelected({ id: file.id, name: file.name ?? "Sans titre", accessToken });
+                }
             })
-            .catch(() => {
-                setError("Les services Google n'ont pas pu être chargés.");
-            });
-    }, [isConfigured]);
+            .build();
+        picker.setVisible(true);
+    }, [onFileSelected]);
 
-    useEffect(() => {
-        if (!ready || !isConfigured || !window.location.search.includes("signin=1")) return;
-
-        window.history.replaceState(null, "", "/dispo");
-        openPicker();
-    }, [ready, isConfigured]);
-
-    function openPicker() {
+    const openPicker = useCallback(() => {
         if (!window.google || !window.gapi || !clientId || !apiKey) return;
 
+        window.scrollTo({ top: 0, behavior: "smooth" });
         setError(null);
         const existingToken = sessionStorage.getItem("polyjam-google-access-token");
         if (existingToken) {
@@ -84,38 +82,21 @@ function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
                 showPicker(accessToken);
             },
         });
-
         tokenClient.requestAccessToken({ prompt: "select_account" });
-    }
+    }, [showPicker]);
 
-    function showPicker(accessToken: string) {
-        if (!window.google || !apiKey) return;
+    useEffect(() => {
+        if (!isConfigured) return;
 
-        const view = new window.google.picker.DocsView(
-            window.google.picker.ViewId.SPREADSHEETS
-        ).setMimeTypes("application/vnd.google-apps.spreadsheet");
+        loadGoogleServices(() => window.gapi?.load("picker", () => setReady(true)), () => setError("Les services Google n'ont pas pu être chargés."));
+    }, [isConfigured]);
 
-        const picker = new window.google.picker.PickerBuilder()
-            .addView(view)
-            .setOAuthToken(accessToken)
-            .setDeveloperKey(apiKey)
-            .setCallback((pickerResponse) => {
-                if (
-                    pickerResponse.action === window.google!.picker.Action.PICKED &&
-                    pickerResponse.docs?.[0]
-                ) {
-                    const file = pickerResponse.docs[0];
-                    onFileSelected({
-                        id: file.id,
-                        name: file.name ?? "Sans titre",
-                        accessToken,
-                    });
-                }
-            })
-            .build();
+    useEffect(() => {
+        if (!ready || !isConfigured || !window.location.search.includes("signin=1")) return;
 
-        picker.setVisible(true);
-    }
+        window.history.replaceState(null, "", "/dispo");
+        window.setTimeout(openPicker, 0);
+    }, [isConfigured, openPicker, ready]);
 
     if (!isConfigured) {
         return (
@@ -138,6 +119,13 @@ function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
             {error && <p className="picker-error">{error}</p>}
         </div>
     );
+}
+
+function loadGoogleServices(onReady: () => void, onError: () => void) {
+    Promise.all([
+        loadScript("https://accounts.google.com/gsi/client", "google-identity-script"),
+        loadScript("https://apis.google.com/js/api.js", "google-api-script"),
+    ]).then(onReady).catch(onError);
 }
 
 export default GoogleDrivePicker;
