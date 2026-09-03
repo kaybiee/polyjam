@@ -8,7 +8,7 @@ dotenv.config({ path: ".env.local" });
 dotenv.config();
 
 const app = express();
-const port = Number(process.env.API_PORT ?? 3001);
+const port = Number(process.env.PORT ?? process.env.API_PORT ?? 3001);
 const allowedGoogleEmails = new Set(
     (process.env.ALLOWED_GOOGLE_EMAILS ?? "")
         .split(",")
@@ -36,7 +36,12 @@ let setlists;
 let songs;
 let mongoClient;
 
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(cors({
+    origin: [
+        "http://localhost:5173",
+        "https://kaybiee.github.io",
+    ],
+}));
 app.use(express.json({ limit: "16kb" }));
 
 app.get("/api/health", (_request, response) => {
@@ -355,7 +360,7 @@ async function requireAllowedGoogleUser(request, response, next) {
 
 connectDatabase()
     .then(() => {
-        app.listen(port, "localhost", () => {
+        app.listen(port, "0.0.0.0", () => {
             console.log(`Polyjam API listening at http://localhost:${port}`);
         });
     })

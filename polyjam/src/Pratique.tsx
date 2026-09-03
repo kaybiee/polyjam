@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import SpreadsheetSelector, { type SelectedSpreadsheet } from "./SpreadsheetSelector";
 import { generatePracticeCandidates, parseSpreadsheetRows, sortCandidates, type AvailabilityDate, type PracticeCandidate, type PracticeMember, type PracticeSong } from "./practiceScheduling";
+import { apiFetch } from "./api";
 
 interface Setlist { setlistId: string; name: string; songIds: string[]; }
 
@@ -49,7 +50,7 @@ function Pratique() {
         if (!selectedSpreadsheet?.accessToken) {
             return;
         }
-        fetch(`/api/spreadsheets/${selectedSpreadsheet.id}/values?range=${encodeURIComponent("'Dispos'!A:ZZ")}`, { headers: { Authorization: `Bearer ${selectedSpreadsheet.accessToken}` } })
+        apiFetch(`/api/spreadsheets/${selectedSpreadsheet.id}/values?range=${encodeURIComponent("'Dispos'!A:ZZ")}`, { headers: { Authorization: `Bearer ${selectedSpreadsheet.accessToken}` } })
             .then(async (response) => {
                 if (!response.ok) throw new Error(response.status === 401 ? "La connexion au fichier Google a expiré." : "Impossible de charger le fichier sélectionné.");
                 const result = await response.json() as { values?: unknown };
@@ -96,7 +97,7 @@ function Pratique() {
 
     function openSchedule(candidate: PracticeCandidate) {
         sessionStorage.setItem("polyjam-practice-schedule", JSON.stringify(candidate));
-        window.location.href = "/pratique/schedule";
+        window.location.href = `${import.meta.env.BASE_URL}pratique/schedule`;
     }
 
     return (
@@ -132,7 +133,7 @@ function StaffList({ names, workload }: { names: string[]; workload: Record<stri
     return <span className="practice-staff-list">{names.length > 0 ? names.map((name) => <span className={workload[name] === 1 ? "single-song-staff" : "multi-song-staff"} key={name}>{name} ({workload[name]} chanson{workload[name] === 1 ? "" : "s"})</span>) : "Aucun"}</span>;
 }
 
-async function fetchCollection<T>(url: string): Promise<T[]> { const response = await fetch(url, { headers: getAuthHeaders() }); if (!response.ok) throw new Error(); const value = await response.json() as unknown; if (!Array.isArray(value)) throw new Error(); return value as T[]; }
+async function fetchCollection<T>(url: string): Promise<T[]> { const response = await apiFetch(url, { headers: getAuthHeaders() }); if (!response.ok) throw new Error(); const value = await response.json() as unknown; if (!Array.isArray(value)) throw new Error(); return value as T[]; }
 function getSpreadsheetFromUrl(): SelectedSpreadsheet | null {
     const parameters = new URLSearchParams(window.location.search);
     const id = parameters.get("file");

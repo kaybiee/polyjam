@@ -10,6 +10,7 @@ import GoogleSignInButton from "./GoogleSignInButton";
 import SignInPage from "./SignInPage";
 import darkLogo from "./assets/polyjamdarkmode.png";
 import lightLogo from "./assets/polyjamlightmode.png";
+import { apiFetch } from "./api";
 
 const CREDITS_TEXT = "Site web par Kay Benabdallah, VP Pratique 2026-2027";
 
@@ -57,7 +58,7 @@ export default function App() {
       navigate("/signin", { replace: true });
     }, expiresAt - Date.now());
 
-    fetch("/api/google/profile", {
+    apiFetch("/api/google/profile", {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
       .then((response) => {

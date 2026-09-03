@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useModalFocusTrap } from "./useModalFocusTrap";
+import { apiFetch } from "./api";
 
 interface Member {
     memberId: string;
@@ -58,7 +59,7 @@ function Membres() {
     useModalFocusTrap(modalRef);
 
     useEffect(() => {
-        fetch("/api/members", { headers: getAuthHeaders() })
+        apiFetch("/api/members", { headers: getAuthHeaders() })
             .then((response) => {
                 if (!response.ok) throw new Error();
                 return response.json() as Promise<Member[]>;
@@ -81,7 +82,7 @@ function Membres() {
         const memberId = editingMember?.memberId ?? createMemberId(trimmedName);
 
         try {
-            const response = await fetch(`/api/members/${memberId}/instrument`, {
+            const response = await apiFetch(`/api/members/${memberId}/instrument`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify({ name: trimmedName, instruments: selectedInstruments, mainInstrument: mainInstrument || selectedInstruments[0], actif }),
@@ -129,7 +130,7 @@ function Membres() {
         setError(null);
         setSuccess(null);
         try {
-            const response = await fetch(`/api/members/${member.memberId}`, { method: "DELETE", headers: getAuthHeaders() });
+            const response = await apiFetch(`/api/members/${member.memberId}`, { method: "DELETE", headers: getAuthHeaders() });
             if (!response.ok) throw new Error();
             const result = await response.json() as { message?: string };
             setMembers((currentMembers) => currentMembers.filter((item) => item.memberId !== member.memberId));

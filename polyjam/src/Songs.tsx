@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import SongModal, { type SongDraft } from "./SongModal";
+import { apiFetch } from "./api";
 
 interface Member {
     memberId: string;
@@ -85,7 +86,7 @@ function Songs() {
         setSuccess(null);
         const song = { songId: editingSong?.songId ?? crypto.randomUUID(), title: title.trim(), artist: artist.trim(), staffMemberIds, staffInstruments };
         try {
-            const response = await fetch(`/api/songs/${song.songId}`, {
+            const response = await apiFetch(`/api/songs/${song.songId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify(song),
@@ -105,7 +106,7 @@ function Songs() {
         setError(null);
         setSuccess(null);
         try {
-            const response = await fetch(`/api/songs/${song.songId}`, { method: "DELETE", headers: getAuthHeaders() });
+            const response = await apiFetch(`/api/songs/${song.songId}`, { method: "DELETE", headers: getAuthHeaders() });
             if (!response.ok) throw new Error();
             setSongs((current) => current.filter((item) => item.songId !== song.songId));
             setSuccess(`${song.title} a été supprimée avec succès.`);
@@ -164,7 +165,7 @@ function Songs() {
 }
 
 async function fetchCollection<T>(url: string): Promise<T[]> {
-    const response = await fetch(url, { headers: getAuthHeaders() });
+    const response = await apiFetch(url, { headers: getAuthHeaders() });
     if (!response.ok) throw new Error(`Request failed: ${response.status}`);
     const collection = await response.json() as unknown;
     if (!Array.isArray(collection)) throw new Error("Expected a collection");

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 import SongModal, { type SongDraft } from "./SongModal";
+import { apiFetch } from "./api";
 
 interface Member {
     memberId: string;
@@ -83,7 +84,7 @@ function Setlists() {
         const setlistId = selectedSetlist?.setlistId ?? crypto.randomUUID();
         const songIds = selectedSetlist?.songIds ?? [];
         try {
-            const response = await fetch(`/api/setlists/${setlistId}`, {
+            const response = await apiFetch(`/api/setlists/${setlistId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify({ name: name.trim(), songIds }),
@@ -112,7 +113,7 @@ function Setlists() {
         if (!title || !artist || staffMemberIds.length === 0) return;
         const song = { songId: editingSong?.songId ?? crypto.randomUUID(), title, artist, staffMemberIds, staffInstruments };
         try {
-            const songResponse = await fetch(`/api/songs/${song.songId}`, {
+            const songResponse = await apiFetch(`/api/songs/${song.songId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify(song),
@@ -137,7 +138,7 @@ function Setlists() {
     async function saveSetlistData(setlist: Setlist) {
         setError(null);
         try {
-            const response = await fetch(`/api/setlists/${setlist.setlistId}`, {
+            const response = await apiFetch(`/api/setlists/${setlist.setlistId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify(setlist),
@@ -152,7 +153,7 @@ function Setlists() {
 
     async function deleteSetlist() {
         if (!selectedSetlist || !window.confirm(`Supprimer la liste ${selectedSetlist.name} ?`)) return;
-        await fetch(`/api/setlists/${selectedSetlist.setlistId}`, { method: "DELETE", headers: getAuthHeaders() });
+        await apiFetch(`/api/setlists/${selectedSetlist.setlistId}`, { method: "DELETE", headers: getAuthHeaders() });
         setSetlists((current) => current.filter((item) => item.setlistId !== selectedSetlist.setlistId));
         startNewSetlist();
     }
@@ -218,7 +219,7 @@ function Setlists() {
 }
 
 async function fetchCollection<T>(url: string): Promise<T[]> {
-    const response = await fetch(url, { headers: getAuthHeaders() });
+    const response = await apiFetch(url, { headers: getAuthHeaders() });
     if (!response.ok) throw new Error(`Request failed: ${response.status}`);
     const collection = await response.json() as unknown;
     if (!Array.isArray(collection)) throw new Error("Expected a collection");

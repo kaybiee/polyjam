@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { validateSpreadsheetFormat } from "./spreadsheetFormat";
+import { apiFetch } from "./api";
 
 interface Member {
     memberId: string;
@@ -42,7 +43,7 @@ function Spreadsheet({ url, accessToken, onTokenExpired }: SpreadsheetProps) {
 
         try {
             // Fetch the values directly from the Google Sheets API.
-            const response = await fetch(
+            const response = await apiFetch(
                 url,
                 accessToken
                     ? { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -157,7 +158,7 @@ function Spreadsheet({ url, accessToken, onTokenExpired }: SpreadsheetProps) {
 
     useEffect(() => {
         window.setTimeout(() => { void readSpreadsheet(); }, 0);
-        fetch("/api/members", {
+        apiFetch("/api/members", {
             headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
         })
             .then((response) => response.ok ? response.json() as Promise<Member[]> : [])

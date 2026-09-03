@@ -26,7 +26,7 @@ function Dispo() {
         window.history.pushState(
             null,
             "",
-            `/dispo?file=${encodeURIComponent(file.id)}&name=${encodeURIComponent(file.name)}`
+            `${import.meta.env.BASE_URL}dispo?file=${encodeURIComponent(file.id)}&name=${encodeURIComponent(file.name)}`
         );
     }
 
@@ -38,7 +38,7 @@ function Dispo() {
             sessionStorage.removeItem(`polyjam-token-${selectedId}`);
             sessionStorage.removeItem(`polyjam-token-expires-at-${selectedId}`);
         }
-        window.history.replaceState(null, "", "/dispo");
+        window.history.replaceState(null, "", `${import.meta.env.BASE_URL}dispo`);
         window.location.reload();
     }
 

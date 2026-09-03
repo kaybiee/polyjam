@@ -94,7 +94,7 @@ function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
     useEffect(() => {
         if (!ready || !isConfigured || !window.location.search.includes("signin=1")) return;
 
-        window.history.replaceState(null, "", "/dispo");
+        window.history.replaceState(null, "", `${import.meta.env.BASE_URL}dispo`);
         window.setTimeout(openPicker, 0);
     }, [isConfigured, openPicker, ready]);
 
