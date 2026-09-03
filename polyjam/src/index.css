@@ -2517,22 +2517,22 @@ body.theme-dark .calendar-day.level-0 {
 }
 
 body.theme-dark .calendar-day.level-1 {
-  background: #294333;
-  color: #e8f3eb;
+  background: #79ad79;
+  color: #202124;
 }
 
 body.theme-dark .calendar-day.level-2 {
-  background: #3d6546;
-  color: #f1f8f2;
-}
-
-body.theme-dark .calendar-day.level-3 {
   background: #56845b;
   color: #fff;
 }
 
+body.theme-dark .calendar-day.level-3 {
+  background: #3d6546;
+  color: #fff;
+}
+
 body.theme-dark .calendar-day.level-4 {
-  background: #79ad79;
+  background: #294333;
   color: #fff;
 }
 
