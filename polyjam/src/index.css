@@ -1024,6 +1024,10 @@ body {
   --bg: #fff;
   --text: #5f6368;
   --text-h: #202124;
+  --availability-level-1: #f7fbf5;
+  --availability-level-2: #dcefd8;
+  --availability-level-3: #add5a5;
+  --availability-level-4: #62ad69;
   --border: #e8eaed;
   --accent: #e67e22;
   --accent-bg: #fff7ed;
@@ -1035,6 +1039,10 @@ body {
   --bg: #202124;
   --text: #bdc1c6;
   --text-h: #e8eaed;
+  --availability-level-1: #111714;
+  --availability-level-2: #294d35;
+  --availability-level-3: #5f9868;
+  --availability-level-4: #b8e6bd;
   --border: #3c4043;
   --accent: #8ab4f8;
   --accent-bg: #292a2d;
@@ -1044,22 +1052,22 @@ body {
 
 .theme-light .logo-area {
   background: #fff;
-  border-color: #e8eaed;
+  background: var(--availability-level-1);
 }
 
 .theme-light .theme-logo {
   background: #fff7ed;
-  border-color: #f3b16e;
+  background: var(--availability-level-2);
   color: #c45f12;
 }
 
 .theme-light .theme-logo span {
-  color: #c45f12;
+  background: var(--availability-level-3);
 }
 
 .theme-light .google-sign-in {
   background: #e67e22;
-  color: #fff;
+  background: var(--availability-level-4);
 }
 
 .theme-light .google-sign-in:hover,
@@ -2521,12 +2529,12 @@ body.theme-dark .month-controls button {
 
 body.theme-dark .calendar-day.level-0 {
   background: #292a2d;
-  color: #bdc1c6;
+  color: #fff;
 }
 
 body.theme-dark .calendar-day.level-1 {
   background: #79ad79;
-  color: #202124;
+  color: #111714;
 }
 
 body.theme-dark .calendar-day.level-2 {
