@@ -4,8 +4,12 @@ interface GoogleDrivePickerProps {
     onFileSelected: (file: { id: string; name: string; accessToken: string }) => void;
 }
 
+interface GoogleDriveFile {
+    id: string;
+    name?: string;
+}
+
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
 const googleScopes = [
     "openid",
     "profile",
@@ -35,36 +39,39 @@ function loadScript(src: string, id: string) {
 
 function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
     const [ready, setReady] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [files, setFiles] = useState<GoogleDriveFile[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const isConfigured = Boolean(clientId && apiKey);
+    const requestFiles = useCallback((accessToken: string) => {
+        setLoading(true);
+        setError(null);
+        const parameters = new URLSearchParams({
+            spaces: "drive",
+            pageSize: "100",
+            orderBy: "name",
+            q: "mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false",
+            fields: "files(id,name)",
+        });
 
-    const showPicker = useCallback((accessToken: string) => {
-        if (!window.google || !apiKey) return;
-
-        const view = new window.google.picker.DocsView(window.google.picker.ViewId.SPREADSHEETS)
-            .setMimeTypes("application/vnd.google-apps.spreadsheet");
-        const picker = new window.google.picker.PickerBuilder()
-            .addView(view)
-            .setOAuthToken(accessToken)
-            .setDeveloperKey(apiKey)
-            .setCallback((pickerResponse) => {
-                if (pickerResponse.action === window.google!.picker.Action.PICKED && pickerResponse.docs?.[0]) {
-                    const file = pickerResponse.docs[0];
-                    onFileSelected({ id: file.id, name: file.name ?? "Sans titre", accessToken });
-                }
+        fetch(`https://www.googleapis.com/drive/v3/files?${parameters}`, { headers: { Authorization: `Bearer ${accessToken}` } })
+            .then(async (response) => {
+                const result = await response.json() as { files?: GoogleDriveFile[]; error?: { message?: string } };
+                if (!response.ok) throw new Error(result.error?.message ?? "Impossible de récupérer les fichiers Google Drive.");
+                setFiles(result.files ?? []);
             })
-            .build();
-        picker.setVisible(true);
-    }, [onFileSelected]);
+            .catch((requestError) => {
+                setFiles([]);
+                setError(requestError instanceof Error ? requestError.message : "Impossible de récupérer les fichiers Google Drive.");
+            })
+            .finally(() => setLoading(false));
+    }, []);
 
     const openPicker = useCallback(() => {
-        if (!window.google || !window.gapi || !clientId || !apiKey) return;
-
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        if (!window.google || !clientId) return;
         setError(null);
         const existingToken = sessionStorage.getItem("polyjam-google-access-token");
         if (existingToken) {
-            showPicker(existingToken);
+            requestFiles(existingToken);
             return;
         }
 
@@ -79,53 +86,40 @@ function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
                 }
                 sessionStorage.setItem("polyjam-google-access-token", accessToken);
                 sessionStorage.setItem("polyjam-google-token-expires-at", String(Date.now() + (response.expires_in ?? 3600) * 1000));
-                showPicker(accessToken);
+                requestFiles(accessToken);
             },
         });
         tokenClient.requestAccessToken({ prompt: "select_account" });
-    }, [showPicker]);
+    }, [requestFiles]);
 
     useEffect(() => {
-        if (!isConfigured) return;
+        if (!clientId) return;
+        loadScript("https://accounts.google.com/gsi/client", "google-identity-script")
+            .then(() => setReady(true))
+            .catch(() => setError("Le service Google n'a pas pu être chargé."));
+    }, []);
 
-        loadGoogleServices(() => window.gapi?.load("picker", () => setReady(true)), () => setError("Les services Google n'ont pas pu être chargés."));
-    }, [isConfigured]);
-
-    useEffect(() => {
-        if (!ready || !isConfigured || !window.location.search.includes("signin=1")) return;
-
-        window.history.replaceState(null, "", `${import.meta.env.BASE_URL}dispo`);
-        window.setTimeout(openPicker, 0);
-    }, [isConfigured, openPicker, ready]);
-
-    if (!isConfigured) {
-        return (
-            <p className="picker-notice">
-                Ajoutez <code>VITE_GOOGLE_CLIENT_ID</code> et <code>VITE_GOOGLE_API_KEY</code> dans votre fichier <code>.env.local</code> pour activer la sélection Google Drive.
-            </p>
-        );
-    }
+    if (!clientId) return <p className="picker-notice">Ajoutez <code>VITE_GOOGLE_CLIENT_ID</code> dans votre configuration pour activer la sélection Google Drive.</p>;
 
     return (
         <div className="drive-picker">
-            <button
-                className="drive-picker-button"
-                type="button"
-                onClick={openPicker}
-                disabled={!ready}
-            >
-                {ready ? "Choisir un fichier Google Drive" : "Pas connecté aux services Google"}
+            <button className="drive-picker-button" type="button" onClick={openPicker} disabled={!ready || loading}>
+                {loading ? "Recherche des fichiers..." : ready ? "Choisir un fichier Google Drive" : "Connexion Google..."}
             </button>
+            {files.length > 0 && (
+                <select className="spreadsheet-file-select" defaultValue="" onChange={(event) => {
+                    const file = files.find((item) => item.id === event.target.value);
+                    const accessToken = sessionStorage.getItem("polyjam-google-access-token");
+                    if (file && accessToken) onFileSelected({ id: file.id, name: file.name ?? "Sans titre", accessToken });
+                }}>
+                    <option value="">Sélectionnez un fichier</option>
+                    {files.map((file) => <option key={file.id} value={file.id}>{file.name ?? "Sans titre"}</option>)}
+                </select>
+            )}
+            {!loading && ready && files.length === 0 && error === null && <p className="picker-notice">Aucun fichier Google Sheets trouvé.</p>}
             {error && <p className="picker-error">{error}</p>}
         </div>
     );
-}
-
-function loadGoogleServices(onReady: () => void, onError: () => void) {
-    Promise.all([
-        loadScript("https://accounts.google.com/gsi/client", "google-identity-script"),
-        loadScript("https://apis.google.com/js/api.js", "google-api-script"),
-    ]).then(onReady).catch(onError);
 }
 
 export default GoogleDrivePicker;
