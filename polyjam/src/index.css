@@ -579,10 +579,10 @@ button.calendar-day.level-0 {
   color: #5f6368;
 }
 
-.level-1 { background: #f7fbf5; color: #000; }
-.level-2 { background: #dcefd8; color: #000; }
-.level-3 { background: #add5a5; color: #000; }
-.level-4 { background: #62ad69; color: #fff; }
+.level-1 { background: var(--availability-level-1); color: #000; }
+.level-2 { background: var(--availability-level-2); color: #000; }
+.level-3 { background: var(--availability-level-3); color: #000; }
+.level-4 { background: var(--availability-level-4); color: #fff; }
 
 .date-details {
   background: #eef4fb;
@@ -2533,23 +2533,23 @@ body.theme-dark .calendar-day.level-0 {
 }
 
 body.theme-dark .calendar-day.level-1 {
-  background: #79ad79;
-  color: #111714;
+  background: var(--availability-level-1);
+  color: #fff;
 }
 
 body.theme-dark .calendar-day.level-2 {
-  background: #56845b;
+  background: var(--availability-level-2);
   color: #fff;
 }
 
 body.theme-dark .calendar-day.level-3 {
-  background: #3d6546;
+  background: var(--availability-level-3);
   color: #fff;
 }
 
 body.theme-dark .calendar-day.level-4 {
-  background: #294333;
-  color: #fff;
+  background: var(--availability-level-4);
+  color: #111714;
 }
 
 body.theme-dark button.calendar-day.today {
