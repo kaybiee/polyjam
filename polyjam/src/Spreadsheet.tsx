@@ -251,6 +251,7 @@ function Spreadsheet({ url, accessToken, onTokenExpired }: SpreadsheetProps) {
                 <i className="legend-swatch level-2" />
                 <i className="legend-swatch level-3" />
                 <i className="legend-swatch level-4" />
+                <i className="legend-swatch level-5" />
                 <span>Plus de personnes</span>
             </div>
 
@@ -265,7 +266,7 @@ function Spreadsheet({ url, accessToken, onTokenExpired }: SpreadsheetProps) {
                         : 0;
                     const level = availableCount === 0
                         ? 0
-                        : Math.ceil((availableCount / maximumAvailability) * 4);
+                        : Math.ceil((availableCount / maximumAvailability) * 5);
 
                     return date ? (
                         <button
