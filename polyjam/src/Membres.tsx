@@ -1,19 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { useModalFocusTrap } from "./useModalFocusTrap";
+import { apiFetch } from "./api";
 
 interface Member {
     memberId: string;
     name: string;
     instrument?: string;
     instruments?: string[];
+    mainInstrument?: string;
+    actif: boolean;
     updatedAt?: string;
 }
 
 const instruments = ["Bass", "Batterie","Clavier", "Chant", "Flûte", "Guitare", "Saxophone", "Trompette", "Trombone", "Tuba", "Violon"];
 
 function getMemberInstruments(member: Member) {
-    return [...(member.instruments ?? (member.instrument ? [member.instrument] : []))].sort((left, right) => left.localeCompare(right, "fr"));
+    const memberInstruments = [...(member.instruments ?? (member.instrument ? [member.instrument] : []))];
+    return memberInstruments.sort((left, right) => {
+        if (left === member.mainInstrument) return -1;
+        if (right === member.mainInstrument) return 1;
+        return left.localeCompare(right, "fr");
+    });
+}
+
+function getAuthHeaders(): Record<string, string> {
+    const accessToken = sessionStorage.getItem("polyjam-google-access-token");
+    return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
 }
 
 function Membres() {
@@ -21,6 +35,11 @@ function Membres() {
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [selectedInstruments, setSelectedInstruments] = useState<string[]>([]);
+    const [instrumentSearch, setInstrumentSearch] = useState("");
+    const instrumentSearchRef = useRef<HTMLInputElement>(null);
+    const [hoveredInstrument, setHoveredInstrument] = useState<string | null>(null);
+    const [mainInstrument, setMainInstrument] = useState("");
+    const [actif, setActif] = useState(true);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,9 +49,17 @@ function Membres() {
     const [sortMode, setSortMode] = useState<"name" | "instrument">("name");
     const [instrumentFilter, setInstrumentFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
+    const modalRef = useRef<HTMLElement>(null);
+    const firstInstrumentOptionRef = useRef<HTMLButtonElement>(null);
+
+    const filteredInstruments = instruments
+        .filter((instrument) => !selectedInstruments.includes(instrument) && instrument.toLocaleLowerCase("fr").includes(instrumentSearch.trim().toLocaleLowerCase("fr")))
+        .sort((left, right) => left.localeCompare(right, "fr"));
+
+    useModalFocusTrap(modalRef);
 
     useEffect(() => {
-        fetch("/api/members")
+        apiFetch("/api/members", { headers: getAuthHeaders() })
             .then((response) => {
                 if (!response.ok) throw new Error();
                 return response.json() as Promise<Member[]>;
@@ -44,8 +71,10 @@ function Membres() {
 
     async function saveMember(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        const trimmedName = `${firstName.trim()} ${lastName.trim()}`.trim();
-        if (!trimmedName || selectedInstruments.length === 0) return;
+        const trimmedFirstName = firstName.trim();
+        const trimmedLastName = lastName.trim();
+        const trimmedName = `${trimmedFirstName} ${trimmedLastName}`.trim();
+        if (!trimmedFirstName || !trimmedLastName || /\s/.test(trimmedFirstName) || trimmedFirstName.length > 20 || trimmedLastName.length > 20 || selectedInstruments.length === 0 || (selectedInstruments.length > 1 && !mainInstrument)) return;
 
         setSaving(true);
         setError(null);
@@ -53,10 +82,10 @@ function Membres() {
         const memberId = editingMember?.memberId ?? createMemberId(trimmedName);
 
         try {
-            const response = await fetch(`/api/members/${memberId}/instrument`, {
+            const response = await apiFetch(`/api/members/${memberId}/instrument`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: trimmedName, instruments: selectedInstruments }),
+                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+                body: JSON.stringify({ name: trimmedName, instruments: selectedInstruments, mainInstrument: mainInstrument || selectedInstruments[0], actif }),
             });
             if (!response.ok) {
                 const details = await response.json() as { error?: string };
@@ -70,6 +99,9 @@ function Membres() {
             setFirstName("");
             setLastName("");
             setSelectedInstruments([]);
+            setInstrumentSearch("");
+            setHoveredInstrument(null);
+            setMainInstrument("");
             setEditingMember(null);
             setSuccess(`${trimmedName} a été ${editingMember ? "modifié" : "ajouté"} avec succès.`);
             setIsModalOpen(false);
@@ -85,6 +117,9 @@ function Membres() {
         setFirstName(nameParts.shift() ?? "");
         setLastName(nameParts.join(" "));
         setSelectedInstruments(getMemberInstruments(member));
+        const memberInstruments = getMemberInstruments(member);
+        setMainInstrument(member.mainInstrument && memberInstruments.includes(member.mainInstrument) ? member.mainInstrument : memberInstruments.length === 1 ? memberInstruments[0] : "");
+        setActif(member.actif !== false);
         setEditingMember(member);
         setIsModalOpen(true);
     }
@@ -95,7 +130,7 @@ function Membres() {
         setError(null);
         setSuccess(null);
         try {
-            const response = await fetch(`/api/members/${member.memberId}`, { method: "DELETE" });
+            const response = await apiFetch(`/api/members/${member.memberId}`, { method: "DELETE", headers: getAuthHeaders() });
             if (!response.ok) throw new Error();
             const result = await response.json() as { message?: string };
             setMembers((currentMembers) => currentMembers.filter((item) => item.memberId !== member.memberId));
@@ -139,6 +174,10 @@ function Membres() {
                 setFirstName("");
                 setLastName("");
                 setSelectedInstruments([]);
+                setInstrumentSearch("");
+                setHoveredInstrument(null);
+                setMainInstrument("");
+                setActif(true);
                 setIsModalOpen(true);
             }}>
                 <span aria-hidden="true">＋</span> Ajouter un membre
@@ -152,6 +191,7 @@ function Membres() {
                     type="search"
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
+                    maxLength={20}
                     placeholder="Nom du membre"
                 />
                 <label htmlFor="member-sort-select">Trier par</label>
@@ -168,7 +208,7 @@ function Membres() {
 
             {isModalOpen && (
                 <div className="modal-backdrop" role="presentation" onMouseDown={() => setIsModalOpen(false)}>
-                    <section className="member-modal" role="dialog" aria-modal="true" aria-labelledby="member-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+                    <section ref={modalRef} className="member-modal" role="dialog" aria-modal="true" aria-labelledby="member-modal-title" onMouseDown={(event) => event.stopPropagation()}>
                         <div className="modal-heading">
                             <div>
                                 <p className="eyebrow">{editingMember ? "Modifier le profil" : "Nouveau profil"}</p>
@@ -179,25 +219,39 @@ function Membres() {
                         <form className="member-form" onSubmit={saveMember}>
                             <div>
                                 <label htmlFor="member-first-name">Prénom</label>
-                                <input id="member-first-name" value={firstName} onChange={(event) => setFirstName(event.target.value)} maxLength={50} required autoFocus />
+                                <input id="member-first-name" value={firstName} onChange={(event) => setFirstName(event.target.value.replace(/\s/g, ""))} maxLength={20} required autoFocus />
                             </div>
                             <div>
                                 <label htmlFor="member-last-name">Nom</label>
-                                <input id="member-last-name" value={lastName} onChange={(event) => setLastName(event.target.value)} maxLength={50} required />
+                                <input id="member-last-name" value={lastName} onChange={(event) => setLastName(event.target.value)} maxLength={20} required />
                             </div>
                             <div>
                                 <label htmlFor="member-instrument">Instrument</label>
                                 <div className="instrument-picker">
                                     {selectedInstruments.map((option) => (
-                                        <button className="instrument-chip" type="button" key={option} onClick={() => setSelectedInstruments((current) => current.filter((item) => item !== option))}>
+                                        <button className="instrument-chip" type="button" key={option} onClick={() => { setSelectedInstruments((current) => current.filter((item) => item !== option)); if (mainInstrument === option) setMainInstrument(""); }}>
                                             {option} <span aria-hidden="true">×</span>
                                         </button>
                                     ))}
-                                    <select id="member-instrument" value="" onChange={(event) => setSelectedInstruments((current) => current.includes(event.target.value) ? current : [...current, event.target.value])}>
-                                        <option value="">Choisissez un instrument</option>
-                                        {instruments.filter((option) => !selectedInstruments.includes(option)).map((option) => <option key={option}>{option}</option>)}
-                                    </select>
+                                    <input ref={instrumentSearchRef} id="member-instrument" className="staff-search" value={instrumentSearch} onChange={(event) => { setInstrumentSearch(event.target.value); setHoveredInstrument(null); }} onKeyDown={(event) => { const selected = filteredInstruments.find((option) => option === hoveredInstrument) ?? filteredInstruments[0]; if (event.key === "Tab" && instrumentSearch.trim() && selected) { event.preventDefault(); firstInstrumentOptionRef.current?.focus(); return; } if (event.key === "Enter" && selected) { event.preventDefault(); setSelectedInstruments((current) => [...current, selected]); setInstrumentSearch(""); setHoveredInstrument(null); requestAnimationFrame(() => instrumentSearchRef.current?.focus()); } }} placeholder="Rechercher un instrument" autoComplete="off" />
+                                    <div className="staff-options" role="listbox" aria-label="Instruments">
+                                        {filteredInstruments.map((option, index) => <button ref={index === 0 ? firstInstrumentOptionRef : undefined} className={`staff-option${(hoveredInstrument ?? filteredInstruments[0]) === option ? " highlighted" : ""}`} tabIndex={instrumentSearch.trim() ? 0 : -1} type="button" key={option} onMouseEnter={() => setHoveredInstrument(option)} onMouseLeave={() => setHoveredInstrument(null)} onClick={() => { setSelectedInstruments((current) => [...current, option]); setInstrumentSearch(""); setHoveredInstrument(null); requestAnimationFrame(() => instrumentSearchRef.current?.focus()); }}>{option}</button>)}
+                                    </div>
                                 </div>
+                            </div>
+                            {selectedInstruments.length > 1 && <div>
+                                <label htmlFor="member-main-instrument">Instrument principal</label>
+                                <select id="member-main-instrument" value={mainInstrument} onChange={(event) => setMainInstrument(event.target.value)} required>
+                                    <option value="">Choisissez l'instrument principal</option>
+                                    {selectedInstruments.map((option) => <option key={option}>{option}</option>)}
+                                </select>
+                            </div>}
+                            <div>
+                                <label htmlFor="member-status">Statut</label>
+                                <select id="member-status" value={actif ? "actif" : "ancien"} onChange={(event) => setActif(event.target.value === "actif")}>
+                                    <option value="actif">Actif</option>
+                                    <option value="ancien">Ancien</option>
+                                </select>
                             </div>
                             <div className="modal-actions">
                                 <button className="modal-cancel" type="button" onClick={() => setIsModalOpen(false)}>Annuler</button>
@@ -216,9 +270,14 @@ function Membres() {
                         <article className="member-card" key={member.memberId}>
                             <div className="member-avatar">{member.name.charAt(0).toUpperCase()}</div>
                             <div className="member-card-content">
-                                <strong>{member.name}</strong>
+                                <div className="member-card-heading">
+                                    <strong>{member.name}</strong>
+                                    <span className={`member-status ${member.actif === false ? "member-status-old" : "member-status-active"}`}>
+                                        {member.actif === false ? "Ancien" : "Actif"}
+                                    </span>
+                                </div>
                                 <div className="member-instruments">
-                                    {getMemberInstruments(member).map((option) => <span className="instrument-chip" key={option}>{option}</span>)}
+                                    {getMemberInstruments(member).map((option) => <span className={`instrument-chip${member.mainInstrument === option || (!member.mainInstrument && getMemberInstruments(member).length === 1) ? " main-instrument" : ""}`} key={option}>{option}</span>)}
                                 </div>
                                 <div className="member-card-actions">
                                     <button className="member-edit-button" type="button" onClick={() => openEditModal(member)} aria-label={`Modifier ${member.name}`} title="Modifier">✎</button>

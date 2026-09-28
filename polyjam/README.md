@@ -1,5 +1,20 @@
 # React + TypeScript + Vite
 
+## Deployment
+
+GitHub Pages hosts the frontend only. Deploy `server/index.js` separately on a service that supports Node.js and MongoDB access, then configure its public URL as `VITE_API_URL`.
+
+In the repository settings, add these GitHub Actions configuration values:
+
+- Repository variable `VITE_GOOGLE_CLIENT_ID`: the Google OAuth client ID.
+- Repository variable `VITE_API_URL`: the public API URL, without a trailing slash.
+
+File selection uses the authenticated Google Drive API, so no browser API key
+is required. Enable **Google Drive API** and **Google Sheets API** in the same
+Google Cloud project as the OAuth client.
+
+The workflow in `.github/workflows/deploy-pages.yml` deploys automatically on pushes to `main`. In **Settings > Pages**, set the source to **GitHub Actions**. Add the deployed Pages URL to the authorized origins and redirect URIs in the Google Cloud OAuth client configuration.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
