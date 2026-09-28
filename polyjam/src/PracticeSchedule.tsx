@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { minutesToTime, timeToMinutes, type PracticeCandidate } from "./practiceScheduling";
+import { getAvailablePracticeSongs, minutesToTime, timeToMinutes, type PracticeCandidate, type PracticeScheduleSource, type ScheduledSong } from "./practiceScheduling";
 
 function PracticeSchedule() {
     const navigate = useNavigate();
@@ -9,6 +9,10 @@ function PracticeSchedule() {
     });
     const [startTime, setStartTime] = useState(schedule?.startTime ?? "18:00");
     const [endTime, setEndTime] = useState(schedule?.endTime ?? "20:00");
+    const [source] = useState<PracticeScheduleSource | null>(() => {
+        try { return JSON.parse(sessionStorage.getItem("polyjam-practice-source") ?? "null") as PracticeScheduleSource | null; } catch { return null; }
+    });
+    const [songToAdd, setSongToAdd] = useState("");
 
     useEffect(() => {
         if (!schedule) navigate("/pratique", { replace: true });
@@ -16,37 +20,77 @@ function PracticeSchedule() {
 
     if (!schedule) return null;
     const currentSchedule = schedule;
+    const addableSongs = source
+        ? getAvailablePracticeSongs(source, currentSchedule.songs, currentSchedule.startTime, currentSchedule.endTime, currentSchedule.excludedSongIds)
+        : [];
 
-    function updateSchedule() {
+    function saveSongs(songs: ScheduledSong[], current: PracticeCandidate, excludedSongIds = current.excludedSongIds ?? []) {
         let cursor = timeToMinutes(startTime);
+        const scheduledSongs = songs.map((song) => {
+            const scheduledSong = { ...song, startTime: minutesToTime(cursor) };
+            cursor += song.durationMinutes;
+            return scheduledSong;
+        });
+        const staffWorkload: Record<string, number> = {};
+        scheduledSongs.forEach((song) => song.availableStaff.forEach((name) => {
+            staffWorkload[name] = (staffWorkload[name] ?? 0) + 1;
+        }));
+        const workload: Record<string, number> = {};
+        if (source) {
+            scheduledSongs.forEach((song) => source.setlistSongs.find((item) => item.songId === song.songId)?.staffMemberIds.forEach((memberId) => {
+                workload[memberId] = (workload[memberId] ?? 0) + 1;
+            }));
+        }
         const updated = {
-            ...currentSchedule,
+            ...current,
             startTime,
             endTime,
-            songs: currentSchedule.songs.map((song) => {
-                const updatedSong = { ...song, startTime: minutesToTime(cursor) };
-                cursor += song.durationMinutes;
-                return updatedSong;
-            }),
+            songs: scheduledSongs,
+            excludedSongIds,
+            staffWorkload,
+            workload: source ? workload : current.workload,
+            fullSongCount: scheduledSongs.filter((song) => song.fullStaff).length,
+            forgivenSongCount: scheduledSongs.filter((song) => !song.fullStaff).length,
+            overflowSongs: current.overflowSongs.filter((title) => !scheduledSongs.some((song) => song.title === title)),
         };
         setSchedule(updated);
         sessionStorage.setItem("polyjam-practice-schedule", JSON.stringify(updated));
+        return updated;
+    }
+
+    function removeSong(songId: string) {
+        saveSongs(
+            currentSchedule.songs.filter((song) => song.songId !== songId),
+            currentSchedule,
+            [...new Set([...(currentSchedule.excludedSongIds ?? []), songId])],
+        );
+    }
+
+    function addSong() {
+        const selectedSong = addableSongs.find((song) => song.songId === songToAdd);
+        if (!selectedSong) return;
+        saveSongs([...currentSchedule.songs, selectedSong], currentSchedule);
+        setSongToAdd("");
+    }
+
+    function updateSchedule() {
+        saveSongs(currentSchedule.songs, currentSchedule);
     }
 
     function updateSongDuration(songId: string, durationMinutes: number) {
         if (!Number.isFinite(durationMinutes) || durationMinutes < 1) return;
         setSchedule((current) => {
             if (!current) return current;
+            const songs = current.songs.map((song) => song.songId === songId ? { ...song, durationMinutes } : song);
+            const totalDuration = songs.reduce((total, song) => total + song.durationMinutes, 0);
+            if (totalDuration > timeToMinutes(endTime) - timeToMinutes(startTime)) return current;
             let cursor = timeToMinutes(startTime);
-            const updated = {
-                ...current,
-                songs: current.songs.map((song) => {
-                    const updatedSong = song.songId === songId ? { ...song, durationMinutes } : song;
-                    const scheduledSong = { ...updatedSong, startTime: minutesToTime(cursor) };
-                    cursor += updatedSong.durationMinutes;
-                    return scheduledSong;
-                }),
-            };
+            const scheduledSongs = songs.map((song) => {
+                const updatedSong = { ...song, startTime: minutesToTime(cursor) };
+                cursor += song.durationMinutes;
+                return updatedSong;
+            });
+            const updated = { ...current, songs: scheduledSongs };
             sessionStorage.setItem("polyjam-practice-schedule", JSON.stringify(updated));
             return updated;
         });
@@ -116,7 +160,8 @@ function PracticeSchedule() {
                 <button className="member-save-button" type="button" onClick={updateSchedule}>Recalculer</button>
                 <button className="primary-action" type="button" onClick={downloadImage}>Générer l'image</button>
             </div>
-            <div className="practice-table-wrap"><table className="practice-table"><thead><tr><th>Début</th><th>Durée</th><th>Chanson</th><th>Staff disponible</th><th>Staff absent</th><th>Ordre</th></tr></thead><tbody>{currentSchedule.songs.map((song, index) => <tr key={song.songId}><td>{song.startTime}</td><td><input className="schedule-song-duration" type="number" min="1" max="240" value={song.durationMinutes} onChange={(event) => updateSongDuration(song.songId, Number(event.target.value))} /> min</td><td>{song.title}</td><td>{song.availableStaff.join(", ") || "Aucun"}</td><td>{song.missingStaff.join(", ") || "-"}</td><td><button className="schedule-order-button" type="button" onClick={() => moveSong(song.songId, -1)} disabled={index === 0} aria-label="Monter">↑</button><button className="schedule-order-button" type="button" onClick={() => moveSong(song.songId, 1)} disabled={index === currentSchedule.songs.length - 1} aria-label="Descendre">↓</button></td></tr>)}</tbody></table></div>
+            <div className="practice-table-wrap"><table className="practice-table"><thead><tr><th>Début</th><th>Durée</th><th>Chanson</th><th>Staff disponible</th><th>Staff absent</th><th>Ordre</th><th>Actions</th></tr></thead><tbody>{currentSchedule.songs.map((song, index) => <tr key={song.songId}><td>{song.startTime}</td><td><input className="schedule-song-duration" type="number" min="1" max="240" value={song.durationMinutes} onChange={(event) => updateSongDuration(song.songId, Number(event.target.value))} /> min</td><td>{song.title}</td><td>{song.availableStaff.join(", ") || "Aucun"}</td><td>{song.missingStaff.join(", ") || "-"}</td><td><button className="schedule-order-button" type="button" onClick={() => moveSong(song.songId, -1)} disabled={index === 0} aria-label="Monter">↑</button><button className="schedule-order-button" type="button" onClick={() => moveSong(song.songId, 1)} disabled={index === currentSchedule.songs.length - 1} aria-label="Descendre">↓</button></td><td><button className="schedule-order-button" type="button" onClick={() => removeSong(song.songId)} aria-label={`Retirer ${song.title}`} title="Retirer la chanson">×</button></td></tr>)}</tbody></table></div>
+            {source && <div className="schedule-add-song"><label htmlFor="schedule-add-song-select">Ajouter une chanson disponible</label><select id="schedule-add-song-select" value={songToAdd} onChange={(event) => setSongToAdd(event.target.value)} disabled={addableSongs.length === 0}><option value="">{addableSongs.length ? "Choisir une chanson" : "Aucune chanson disponible pour le temps restant"}</option>{addableSongs.map((song) => <option key={song.songId} value={song.songId}>{song.title} - {song.artist}</option>)}</select><button className="member-save-button" type="button" onClick={addSong} disabled={!songToAdd}>Ajouter</button></div>}
             {currentSchedule.overflowSongs.length > 0 && <p className="members-error">Chansons non incluses : {currentSchedule.overflowSongs.join(", ")}</p>}
         </div>
     );

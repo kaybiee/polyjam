@@ -58,9 +58,48 @@ export interface PracticeCandidate {
     fullSongCount: number;
     forgivenSongCount: number;
     optionalStaffCount: number;
+    excludedSongIds?: string[];
+}
+
+export interface PracticeScheduleSource {
+    availabilityDate: AvailabilityDate;
+    setlistSongs: PracticeSong[];
+    members: PracticeMember[];
+    forgiveness: number;
+    durationMinutes: number;
 }
 
 const optionalRoles = new Set(["Backs", "Aux Percs", "Clavier Alt"]);
+
+export function getAvailablePracticeSongs(
+    source: PracticeScheduleSource,
+    scheduledSongs: ScheduledSong[],
+    scheduleStartTime: string,
+    scheduleEndTime: string,
+    excludedSongIds: string[] = [],
+): ScheduledSong[] {
+    const slotStart = timeToMinutes(scheduleStartTime);
+    const slotEnd = timeToMinutes(scheduleEndTime);
+    const cursor = slotStart + scheduledSongs.reduce((total, song) => total + song.durationMinutes, 0);
+    const duration = source.durationMinutes;
+    if (cursor + duration > slotEnd) return [];
+
+    const midpoint = slotStart + Math.floor((slotEnd - slotStart) / 2);
+    const scheduledIds = new Set([...scheduledSongs.map((song) => song.songId), ...excludedSongIds]);
+    return source.setlistSongs.flatMap((song) => {
+        if (scheduledIds.has(song.songId)) return [];
+        const result = buildScheduledSong(
+            song,
+            source.members,
+            source.availabilityDate,
+            cursor,
+            duration,
+            midpoint,
+            source.forgiveness,
+        );
+        return result ? [result.song] : [];
+    });
+}
 
 export function parseSpreadsheetRows(rows: unknown[][]): AvailabilityDate[] {
     if (!Array.isArray(rows) || !Array.isArray(rows[4])) {
@@ -130,65 +169,10 @@ export function generatePracticeCandidates(
                     overflowSongs.push(song.title);
                     return;
                 }
-                const requiredHalves = cursor + durationMinutes <= midpoint
-                    ? ["first" as const]
-                    : cursor >= midpoint
-                        ? ["second" as const]
-                        : ["first" as const, "second" as const];
-                const requiredStaff = song.staffMemberIds.map((id) => ({
-                    id,
-                    name: members.find((member) => member.memberId === id)?.name ?? "Membre introuvable",
-                    instrument: song.staffInstruments?.[id] ?? members.find((member) => member.memberId === id)?.mainInstrument ?? "Instrument non défini",
-                })).filter((staff) => !optionalRoles.has(staff.instrument));
-                const optionalStaff = song.staffMemberIds.map((id) => ({
-                    id,
-                    name: members.find((member) => member.memberId === id)?.name ?? "Membre introuvable",
-                    instrument: song.staffInstruments?.[id] ?? members.find((member) => member.memberId === id)?.mainInstrument ?? "Instrument non défini",
-                })).filter((staff) => optionalRoles.has(staff.instrument));
-                const isAvailableForSong = (memberName: string) => {
-                    const person = findSpreadsheetPerson(memberName, date.people);
-                    return requiredHalves.every((half) => Boolean(person?.availability[half]));
-                };
-                const availableRequiredStaff = requiredStaff.filter((staff) => isAvailableForSong(staff.name));
-                const missingRequiredStaff = requiredStaff.filter((staff) => !availableRequiredStaff.includes(staff));
-                const availableOptionalStaff = optionalStaff.filter((staff) => isAvailableForSong(staff.name));
-                const missingOptionalStaff = optionalStaff.filter((staff) => !availableOptionalStaff.includes(staff));
-                const usedSubstituteIds = new Set<string>();
-                const substitutes = missingRequiredStaff.flatMap((missingStaff) => {
-                    const missingMember = members.find((member) => member.memberId === missingStaff.id);
-                    const requiredInstrument = song.staffInstruments?.[missingStaff.id] ?? missingMember?.mainInstrument;
-                    const substitute = requiredInstrument && members.find((member) =>
-                        !usedSubstituteIds.has(member.memberId) &&
-                        !requiredStaff.some((requiredMember) => requiredMember.id === member.memberId) &&
-                        (member.instruments ?? []).includes(requiredInstrument) &&
-                        isAvailableForSong(member.name)
-                    );
-                    if (substitute) usedSubstituteIds.add(substitute.memberId);
-                    return substitute ? [`${substitute.name} (${requiredInstrument})`] : [];
-                });
-                const missingRequiredNames = missingRequiredStaff.map((staff) => `${staff.name} (${staff.instrument})`);
-                const missingStaff = [
-                    ...missingRequiredNames,
-                    ...missingOptionalStaff.map((staff) => `${staff.name} (${staff.instrument}, optionnel)`),
-                ];
-                if (missingRequiredNames.length > forgiveness || substitutes.length < missingRequiredNames.length) return;
-                const availableStaff = [
-                    ...availableRequiredStaff.map((staff) => `${staff.name} (${staff.instrument})`),
-                    ...availableOptionalStaff.map((staff) => `${staff.name} (${staff.instrument})`),
-                    ...substitutes,
-                ];
-                optionalStaffCount += availableOptionalStaff.length;
-                const scheduled = {
-                    songId: song.songId,
-                    title: song.title,
-                    artist: song.artist,
-                    startTime: minutesToTime(cursor),
-                    durationMinutes,
-                    availableStaff,
-                    missingStaff,
-                    fullStaff: missingRequiredNames.length === 0,
-                };
-                songs.push(scheduled);
+                const result = buildScheduledSong(song, members, date, cursor, durationMinutes, midpoint, forgiveness);
+                if (!result) return;
+                optionalStaffCount += result.optionalStaffCount;
+                songs.push(result.song);
                 cursor += durationMinutes;
                 song.staffMemberIds.forEach((id) => { workload[id] = (workload[id] ?? 0) + 1; });
         });
@@ -242,6 +226,73 @@ export function timeToMinutes(value: string) {
 
 export function minutesToTime(value: number) {
     return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+}
+
+function buildScheduledSong(
+    song: PracticeSong,
+    members: PracticeMember[],
+    date: AvailabilityDate,
+    start: number,
+    durationMinutes: number,
+    midpoint: number,
+    forgiveness: number,
+) {
+    const requiredHalves = start + durationMinutes <= midpoint
+        ? ["first" as const]
+        : start >= midpoint
+            ? ["second" as const]
+            : ["first" as const, "second" as const];
+    const staff = song.staffMemberIds.map((id) => ({
+        id,
+        name: members.find((member) => member.memberId === id)?.name ?? "Membre introuvable",
+        instrument: song.staffInstruments?.[id] ?? members.find((member) => member.memberId === id)?.mainInstrument ?? "Instrument non défini",
+    }));
+    const requiredStaff = staff.filter((member) => !optionalRoles.has(member.instrument));
+    const optionalStaff = staff.filter((member) => optionalRoles.has(member.instrument));
+    const isAvailableForSong = (memberName: string) => {
+        const person = findSpreadsheetPerson(memberName, date.people);
+        return requiredHalves.every((half) => Boolean(person?.availability[half]));
+    };
+    const availableRequiredStaff = requiredStaff.filter((member) => isAvailableForSong(member.name));
+    const missingRequiredStaff = requiredStaff.filter((member) => !availableRequiredStaff.includes(member));
+    const availableOptionalStaff = optionalStaff.filter((member) => isAvailableForSong(member.name));
+    const missingOptionalStaff = optionalStaff.filter((member) => !availableOptionalStaff.includes(member));
+    const usedSubstituteIds = new Set<string>();
+    const substitutes = missingRequiredStaff.flatMap((missingMember) => {
+        const member = members.find((item) => item.memberId === missingMember.id);
+        const requiredInstrument = song.staffInstruments?.[missingMember.id] ?? member?.mainInstrument;
+        const substitute = requiredInstrument && members.find((item) =>
+            !usedSubstituteIds.has(item.memberId) &&
+            !requiredStaff.some((requiredMember) => requiredMember.id === item.memberId) &&
+            (item.instruments ?? []).includes(requiredInstrument) &&
+            isAvailableForSong(item.name)
+        );
+        if (substitute) usedSubstituteIds.add(substitute.memberId);
+        return substitute ? [`${substitute.name} (${requiredInstrument})`] : [];
+    });
+    const missingRequiredNames = missingRequiredStaff.map((member) => `${member.name} (${member.instrument})`);
+    if (missingRequiredNames.length > forgiveness || substitutes.length < missingRequiredNames.length) return null;
+
+    return {
+        song: {
+            songId: song.songId,
+            title: song.title,
+            artist: song.artist,
+            startTime: minutesToTime(start),
+            durationMinutes,
+            availableStaff: [
+                ...availableRequiredStaff.map((member) => `${member.name} (${member.instrument})`),
+                ...availableOptionalStaff.map((member) => `${member.name} (${member.instrument})`),
+                ...substitutes,
+            ],
+            missingStaff: [
+                ...missingRequiredNames,
+                ...missingOptionalStaff.map((member) => `${member.name} (${member.instrument}, optionnel)`),
+            ],
+            fullStaff: missingRequiredNames.length === 0,
+        } satisfies ScheduledSong,
+        optionalStaffCount: availableOptionalStaff.length,
+    };
 }
 
 function findSpreadsheetPerson(memberName: string, people: AvailabilityPerson[]) {

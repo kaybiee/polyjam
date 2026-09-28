@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import SpreadsheetSelector, { type SelectedSpreadsheet } from "./SpreadsheetSelector";
-import { generatePracticeCandidates, parseSpreadsheetRows, sortCandidates, type AvailabilityDate, type PracticeCandidate, type PracticeMember, type PracticeSong } from "./practiceScheduling";
+import { generatePracticeCandidates, parseSpreadsheetRows, sortCandidates, type AvailabilityDate, type PracticeCandidate, type PracticeMember, type PracticeScheduleSource, type PracticeSong } from "./practiceScheduling";
 import { apiFetch } from "./api";
 
 interface Setlist { setlistId: string; name: string; songIds: string[]; }
@@ -105,6 +105,20 @@ function Pratique() {
 
     function openSchedule(candidate: PracticeCandidate) {
         sessionStorage.setItem("polyjam-practice-schedule", JSON.stringify(candidate));
+        const availabilityDate = availabilityDates.find((item) => item.date === candidate.date);
+        const sourceSongs = selectedSetlist?.songIds
+            .map((songId) => songs.find((song) => song.songId === songId))
+            .filter((song): song is PracticeSong => Boolean(song)) ?? [];
+        if (availabilityDate && sourceSongs.length > 0) {
+            const source: PracticeScheduleSource = {
+                availabilityDate,
+                setlistSongs: sourceSongs,
+                members,
+                forgiveness,
+                durationMinutes: 15,
+            };
+            sessionStorage.setItem("polyjam-practice-source", JSON.stringify(source));
+        }
         window.location.href = `${import.meta.env.BASE_URL}pratique/schedule`;
     }
 

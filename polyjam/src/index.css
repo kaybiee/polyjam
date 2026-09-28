@@ -466,6 +466,34 @@ code {
   opacity: 0.35;
 }
 
+.schedule-add-song {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.schedule-add-song label {
+  color: var(--text);
+  flex-basis: 100%;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.schedule-add-song select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: var(--text-h);
+  flex: 1 1 260px;
+  font: inherit;
+  font-size: 14px;
+  min-width: 0;
+  padding: 10px;
+}
+
 @media (max-width: 640px) {
   .practice-candidate-heading,
   .practice-tables {
