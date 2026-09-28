@@ -35,6 +35,7 @@ function loadScript(src: string, id: string) {
 
 function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
     const [ready, setReady] = useState(false);
+    const [searching, setSearching] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const isConfigured = Boolean(clientId && apiKey);
 
@@ -66,7 +67,7 @@ function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
         setError(null);
         const existingToken = sessionStorage.getItem("polyjam-google-access-token");
         if (existingToken) {
-            showPicker(existingToken);
+            void showPicker(existingToken);
             return;
         }
 
@@ -80,40 +81,94 @@ function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
                     return;
                 }
                 sessionStorage.setItem("polyjam-google-access-token", accessToken);
-                showPicker(accessToken);
+                void showPicker(accessToken);
             },
         });
 
         tokenClient.requestAccessToken({ prompt: "select_account" });
     }
 
-    function showPicker(accessToken: string) {
+    async function showPicker(accessToken: string) {
         if (!window.google || !apiKey) return;
 
-        const view = new window.google.picker.DocsView(
-            window.google.picker.ViewId.SPREADSHEETS
-        ).setMimeTypes("application/vnd.google-apps.spreadsheet");
+        setSearching(true);
+        try {
+            const folders = await findDisposFolders(accessToken);
+            if (folders.length === 0) {
+                setError('Aucun dossier "Dispos" trouvé dans Google Drive.');
+                return;
+            }
 
-        const picker = new window.google.picker.PickerBuilder()
-            .addView(view)
-            .setOAuthToken(accessToken)
-            .setDeveloperKey(apiKey)
-            .setCallback((pickerResponse) => {
-                if (
-                    pickerResponse.action === window.google!.picker.Action.PICKED &&
-                    pickerResponse.docs?.[0]
-                ) {
-                    const file = pickerResponse.docs[0];
-                    onFileSelected({
-                        id: file.id,
-                        name: file.name ?? "Sans titre",
-                        accessToken,
-                    });
-                }
-            })
-            .build();
+            let builder = new window.google.picker.PickerBuilder()
+                .setOAuthToken(accessToken)
+                .setDeveloperKey(apiKey)
+                .setCallback((pickerResponse) => {
+                    if (
+                        pickerResponse.action === window.google!.picker.Action.PICKED &&
+                        pickerResponse.docs?.[0]
+                    ) {
+                        const file = pickerResponse.docs[0];
+                        onFileSelected({
+                            id: file.id,
+                            name: file.name ?? "Sans titre",
+                            accessToken,
+                        });
+                    }
+                });
 
-        picker.setVisible(true);
+            folders.forEach((folder, index) => {
+                const view = new window.google!.picker.DocsView(
+                    window.google!.picker.ViewId.SPREADSHEETS
+                )
+                    .setMimeTypes("application/vnd.google-apps.spreadsheet")
+                    .setParent(folder.id)
+                    .setLabel(folders.length > 1 ? `DISPOS ${index + 1}` : "DISPOS");
+                builder = builder.addView(view);
+            });
+
+            builder.build().setVisible(true);
+        } catch {
+            setError('Impossible de rechercher les dossiers "Dispos" dans Google Drive.');
+        } finally {
+            setSearching(false);
+        }
+    }
+
+    async function findDisposFolders(accessToken: string) {
+        const folders: { id: string; name: string }[] = [];
+        let pageToken: string | undefined;
+
+        do {
+            const parameters = new URLSearchParams({
+                key: apiKey!,
+                q: "mimeType = 'application/vnd.google-apps.folder' and name contains 'dispos' and trashed = false",
+                fields: "nextPageToken,files(id,name)",
+                pageSize: "1000",
+                corpora: "allDrives",
+                includeItemsFromAllDrives: "true",
+                supportsAllDrives: "true",
+            });
+            if (pageToken) parameters.set("pageToken", pageToken);
+
+            const response = await fetch(`https://www.googleapis.com/drive/v3/files?${parameters}`, {
+                headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            if (!response.ok) throw new Error("Drive folder search failed");
+
+            const result = await response.json() as {
+                files?: { id: string; name?: string }[];
+                nextPageToken?: string;
+            };
+            folders.push(
+                ...(result.files ?? []).filter(
+                    (folder): folder is { id: string; name: string } =>
+                        folder.name?.toLocaleLowerCase() === "dispos"
+                )
+            );
+            pageToken = result.nextPageToken;
+        } while (pageToken);
+
+        return folders;
     }
 
     if (!isConfigured) {
@@ -130,9 +185,9 @@ function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
                 className="drive-picker-button"
                 type="button"
                 onClick={openPicker}
-                disabled={!ready}
+                disabled={!ready || searching}
             >
-                {ready ? "Choisir un fichier Google Drive" : "Connexion aux services Google..."}
+                {searching ? "Recherche du dossier Dispos..." : ready ? "Choisir un fichier Google Drive" : "Connexion aux services Google..."}
             </button>
             {error && <p className="picker-error">{error}</p>}
         </div>

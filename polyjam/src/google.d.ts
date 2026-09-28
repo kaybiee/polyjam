@@ -27,18 +27,19 @@ interface GooglePickerResponse {
 
 interface GooglePickerView {
     setMimeTypes: (mimeTypes: string) => GooglePickerView;
+    setParent: (parentId: string) => GooglePickerView;
+    setLabel: (label: string) => GooglePickerView;
 }
 
 interface GooglePickerApi {
     ViewId: { SPREADSHEETS: string };
     Action: { PICKED: string };
     DocsView: new (viewId: string) => GooglePickerView;
-    PickerBuilder: new () => {
-        addView: (view: GooglePickerView) => GooglePickerBuilder;
-    };
+    PickerBuilder: new () => GooglePickerBuilder;
 }
 
 interface GooglePickerBuilder {
+    addView: (view: GooglePickerView) => GooglePickerBuilder;
     setOAuthToken: (token: string) => GooglePickerBuilder;
     setDeveloperKey: (key: string) => GooglePickerBuilder;
     setCallback: (callback: (response: GooglePickerResponse) => void) => GooglePickerBuilder;
