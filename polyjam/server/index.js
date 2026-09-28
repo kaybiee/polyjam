@@ -27,6 +27,9 @@ const allowedInstruments = new Set([
     "Trombone",
     "Tuba",
     "Violon",
+    "Backs",
+    "Aux Percs",
+    "Clavier Alt",
 ]);
 const fallbackMembers = new Map();
 const fallbackSetlists = new Map();

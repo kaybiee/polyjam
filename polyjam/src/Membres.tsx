@@ -14,7 +14,7 @@ interface Member {
     updatedAt?: string;
 }
 
-const instruments = ["Bass", "Batterie","Clavier", "Chant", "Flûte", "Guitare", "Saxophone", "Trompette", "Trombone", "Tuba", "Violon"];
+const instruments = ["Bass", "Batterie", "Clavier", "Chant", "Flûte", "Guitare", "Saxophone", "Trompette", "Trombone", "Tuba", "Violon", "Backs", "Aux Percs", "Clavier Alt"];
 
 function getMemberInstruments(member: Member) {
     const memberInstruments = [...(member.instruments ?? (member.instrument ? [member.instrument] : []))];

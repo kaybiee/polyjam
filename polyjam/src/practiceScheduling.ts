@@ -57,7 +57,10 @@ export interface PracticeCandidate {
     staffWorkload: Record<string, number>;
     fullSongCount: number;
     forgivenSongCount: number;
+    optionalStaffCount: number;
 }
+
+const optionalRoles = new Set(["Backs", "Aux Percs", "Clavier Alt"]);
 
 export function parseSpreadsheetRows(rows: unknown[][]): AvailabilityDate[] {
     if (!Array.isArray(rows) || !Array.isArray(rows[4])) {
@@ -120,6 +123,7 @@ export function generatePracticeCandidates(
         const songs: ScheduledSong[] = [];
         const overflowSongs: string[] = [];
         const workload: Record<string, number> = {};
+        let optionalStaffCount = 0;
         let cursor = slot.from;
         setlistSongs.forEach((song) => {
                 if (cursor + durationMinutes > slot.to) {
@@ -135,13 +139,20 @@ export function generatePracticeCandidates(
                     id,
                     name: members.find((member) => member.memberId === id)?.name ?? "Membre introuvable",
                     instrument: song.staffInstruments?.[id] ?? members.find((member) => member.memberId === id)?.mainInstrument ?? "Instrument non défini",
-                }));
+                })).filter((staff) => !optionalRoles.has(staff.instrument));
+                const optionalStaff = song.staffMemberIds.map((id) => ({
+                    id,
+                    name: members.find((member) => member.memberId === id)?.name ?? "Membre introuvable",
+                    instrument: song.staffInstruments?.[id] ?? members.find((member) => member.memberId === id)?.mainInstrument ?? "Instrument non défini",
+                })).filter((staff) => optionalRoles.has(staff.instrument));
                 const isAvailableForSong = (memberName: string) => {
                     const person = findSpreadsheetPerson(memberName, date.people);
                     return requiredHalves.every((half) => Boolean(person?.availability[half]));
                 };
                 const availableRequiredStaff = requiredStaff.filter((staff) => isAvailableForSong(staff.name));
                 const missingRequiredStaff = requiredStaff.filter((staff) => !availableRequiredStaff.includes(staff));
+                const availableOptionalStaff = optionalStaff.filter((staff) => isAvailableForSong(staff.name));
+                const missingOptionalStaff = optionalStaff.filter((staff) => !availableOptionalStaff.includes(staff));
                 const usedSubstituteIds = new Set<string>();
                 const substitutes = missingRequiredStaff.flatMap((missingStaff) => {
                     const missingMember = members.find((member) => member.memberId === missingStaff.id);
@@ -155,9 +166,18 @@ export function generatePracticeCandidates(
                     if (substitute) usedSubstituteIds.add(substitute.memberId);
                     return substitute ? [`${substitute.name} (${requiredInstrument})`] : [];
                 });
-                const missingStaff = missingRequiredStaff.map((staff) => `${staff.name} (${staff.instrument})`);
-                if (missingStaff.length > forgiveness || substitutes.length < missingStaff.length) return;
-                const availableStaff = [...availableRequiredStaff.map((staff) => `${staff.name} (${staff.instrument})`), ...substitutes];
+                const missingRequiredNames = missingRequiredStaff.map((staff) => `${staff.name} (${staff.instrument})`);
+                const missingStaff = [
+                    ...missingRequiredNames,
+                    ...missingOptionalStaff.map((staff) => `${staff.name} (${staff.instrument}, optionnel)`),
+                ];
+                if (missingRequiredNames.length > forgiveness || substitutes.length < missingRequiredNames.length) return;
+                const availableStaff = [
+                    ...availableRequiredStaff.map((staff) => `${staff.name} (${staff.instrument})`),
+                    ...availableOptionalStaff.map((staff) => `${staff.name} (${staff.instrument})`),
+                    ...substitutes,
+                ];
+                optionalStaffCount += availableOptionalStaff.length;
                 const scheduled = {
                     songId: song.songId,
                     title: song.title,
@@ -166,7 +186,7 @@ export function generatePracticeCandidates(
                     durationMinutes,
                     availableStaff,
                     missingStaff,
-                    fullStaff: missingStaff.length === 0,
+                    fullStaff: missingRequiredNames.length === 0,
                 };
                 songs.push(scheduled);
                 cursor += durationMinutes;
@@ -189,6 +209,7 @@ export function generatePracticeCandidates(
                     staffWorkload,
                     fullSongCount: songs.filter((song) => song.fullStaff).length,
                     forgivenSongCount: songs.filter((song) => !song.fullStaff).length,
+                    optionalStaffCount,
             });
         }
     });
@@ -202,11 +223,11 @@ export function sortCandidates(candidates: PracticeCandidate[], mode: "nearest" 
         const leftDistance = dateDistance(left.date, preferredDate ?? formatIsoDate(new Date()));
         const rightDistance = dateDistance(right.date, preferredDate ?? formatIsoDate(new Date()));
         const leftScore = mode === "nearest"
-            ? [left.fullSongCount, -leftDistance, left.songs.length, leftWorkload, -left.forgivenSongCount]
-            : [left.fullSongCount, left.songs.length, leftWorkload, -left.forgivenSongCount, -leftDistance];
+            ? [left.fullSongCount, left.optionalStaffCount, -leftDistance, left.songs.length, leftWorkload, -left.forgivenSongCount]
+            : [left.fullSongCount, left.optionalStaffCount, left.songs.length, leftWorkload, -left.forgivenSongCount, -leftDistance];
         const rightScore = mode === "nearest"
-            ? [right.fullSongCount, -rightDistance, right.songs.length, rightWorkload, -right.forgivenSongCount]
-            : [right.fullSongCount, right.songs.length, rightWorkload, -right.forgivenSongCount, -rightDistance];
+            ? [right.fullSongCount, right.optionalStaffCount, -rightDistance, right.songs.length, rightWorkload, -right.forgivenSongCount]
+            : [right.fullSongCount, right.optionalStaffCount, right.songs.length, rightWorkload, -right.forgivenSongCount, -rightDistance];
         for (let index = 0; index < leftScore.length; index++) {
             if (leftScore[index] !== rightScore[index]) return rightScore[index] - leftScore[index];
         }
