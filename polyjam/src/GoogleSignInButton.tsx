@@ -40,10 +40,7 @@ function GoogleSignInButton({ onConnected }: GoogleSignInButtonProps) {
     useEffect(() => {
         if (!clientId) return;
 
-        Promise.all([
-            loadScript("https://accounts.google.com/gsi/client", "google-identity-script"),
-            loadScript("https://apis.google.com/js/api.js", "google-api-script"),
-        ])
+        loadScript("https://accounts.google.com/gsi/client", "google-identity-script")
             .then(() => setReady(true))
             .catch(() => setError("Les services Google n'ont pas pu être chargés."));
     }, []);

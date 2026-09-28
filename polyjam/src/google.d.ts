@@ -16,40 +16,8 @@ interface GoogleAccountsOAuth2 {
     }) => GoogleTokenClient;
 }
 
-interface GooglePickerFile {
-    id: string;
-    name?: string;
-}
-
-interface GooglePickerResponse {
-    action: string;
-    docs?: GooglePickerFile[];
-}
-
-interface GooglePickerView {
-    setMimeTypes: (mimeTypes: string) => GooglePickerView;
-    setParent: (parentId: string) => GooglePickerView;
-    setLabel: (label: string) => GooglePickerView;
-}
-
-interface GooglePickerApi {
-    ViewId: { SPREADSHEETS: string };
-    Action: { PICKED: string };
-    DocsView: new (viewId: string) => GooglePickerView;
-    PickerBuilder: new () => GooglePickerBuilder;
-}
-
-interface GooglePickerBuilder {
-    addView: (view: GooglePickerView) => GooglePickerBuilder;
-    setOAuthToken: (token: string) => GooglePickerBuilder;
-    setDeveloperKey: (key: string) => GooglePickerBuilder;
-    setCallback: (callback: (response: GooglePickerResponse) => void) => GooglePickerBuilder;
-    build: () => { setVisible: (visible: boolean) => void };
-}
-
 interface GoogleApi {
     accounts: { oauth2: GoogleAccountsOAuth2 };
-    picker: GooglePickerApi;
 }
 
 declare global {
@@ -61,9 +29,6 @@ declare global {
 
     interface Window {
         google?: GoogleApi;
-        gapi?: {
-            load: (api: string, callback: () => void) => void;
-        };
     }
 }
 
