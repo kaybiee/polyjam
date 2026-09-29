@@ -10,10 +10,6 @@ interface GoogleDriveFile {
 }
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const googleScopes = [
-    "https://www.googleapis.com/auth/drive.readonly",
-    "https://www.googleapis.com/auth/spreadsheets.readonly",
-].join(" ");
 
 function loadIdentityScript() {
     return new Promise<void>((resolve, reject) => {
@@ -78,6 +74,7 @@ function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
     const [selectedId, setSelectedId] = useState("");
     const [error, setError] = useState<string | null>(null);
     const isConfigured = Boolean(clientId);
+    const hasAccessToken = Boolean(sessionStorage.getItem("polyjam-google-access-token"));
 
     useEffect(() => {
         if (!isConfigured) return;
@@ -87,41 +84,17 @@ function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
             .catch(() => setError("Les services Google n'ont pas pu être chargés."));
     }, [isConfigured]);
 
-    const loadSpreadsheetsFromEffect = useEffectEvent(loadSpreadsheets);
+    const findSpreadsheetsFromEffect = useEffectEvent(findSpreadsheets);
 
     useEffect(() => {
-        if (!ready || !window.location.search.includes("signin=1")) return;
-        window.history.replaceState(null, "", "/dispo");
-        loadSpreadsheetsFromEffect();
+        if (!ready) return;
+        const accessToken = sessionStorage.getItem("polyjam-google-access-token");
+        if (!accessToken) return;
+        void findSpreadsheetsFromEffect(accessToken);
     }, [ready]);
 
-    function loadSpreadsheets() {
-        if (!window.google || !clientId) return;
-
-        setError(null);
-        const existingToken = sessionStorage.getItem("polyjam-google-access-token");
-        if (existingToken) {
-            void findSpreadsheets(existingToken);
-            return;
-        }
-
-        const tokenClient = window.google.accounts.oauth2.initTokenClient({
-            client_id: clientId,
-            scope: googleScopes,
-            callback: (response) => {
-                if (!response.access_token) {
-                    setError("La connexion Google a échoué.");
-                    return;
-                }
-                sessionStorage.setItem("polyjam-google-access-token", response.access_token);
-                void findSpreadsheets(response.access_token);
-            },
-        });
-
-        tokenClient.requestAccessToken({ prompt: "select_account" });
-    }
-
     async function findSpreadsheets(accessToken: string) {
+        setError(null);
         setLoading(true);
         setFiles([]);
         setSelectedId("");
@@ -175,14 +148,7 @@ function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
 
     return (
         <div className="drive-picker">
-            <button
-                className="drive-picker-button"
-                type="button"
-                onClick={loadSpreadsheets}
-                disabled={!ready || loading}
-            >
-                {loading ? 'Recherche dans les dossiers "Dispos"...' : ready ? "Charger les fichiers Google Sheets" : "Connexion aux services Google..."}
-            </button>
+            {loading && <p className="picker-notice">Recherche des fichiers Sheets dans les dossiers "Dispos"...</p>}
             {files.length > 0 && (
                 <select
                     className="spreadsheet-file-select"
@@ -196,6 +162,7 @@ function GoogleDrivePicker({ onFileSelected }: GoogleDrivePickerProps) {
                     ))}
                 </select>
             )}
+            {!loading && !hasAccessToken && <p className="picker-notice">Connectez-vous avec Google pour charger les fichiers Sheets.</p>}
             {error && <p className="picker-error">{error}</p>}
         </div>
     );

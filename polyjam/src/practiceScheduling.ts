@@ -202,6 +202,10 @@ export function generatePracticeCandidates(
 
 export function sortCandidates(candidates: PracticeCandidate[], mode: "nearest" | "songs", preferredDate?: string) {
     return [...candidates].sort((left, right) => {
+        if (preferredDate && left.date !== right.date) {
+            if (left.date === preferredDate) return -1;
+            if (right.date === preferredDate) return 1;
+        }
         const leftWorkload = Object.values(left.workload).filter((count) => count > 1).reduce((sum, count) => sum + count, 0);
         const rightWorkload = Object.values(right.workload).filter((count) => count > 1).reduce((sum, count) => sum + count, 0);
         const leftDistance = dateDistance(left.date, preferredDate ?? formatIsoDate(new Date()));

@@ -314,6 +314,11 @@ code {
   width: 100%;
 }
 
+.practice-generate-button {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
 .practice-results {
   margin-top: 36px;
 }

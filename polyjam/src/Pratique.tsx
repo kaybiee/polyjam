@@ -95,13 +95,10 @@ function Pratique() {
         return () => window.clearTimeout(refresh);
     }, [generate, hasGenerated]);
 
-    useEffect(() => {
-        if (hasGenerated || !selectedSpreadsheet || !selectedSetlist || availabilityDates.length === 0) return;
-        const initialGeneration = window.setTimeout(() => {
-            setHasGenerated(true);
-        }, 0);
-        return () => window.clearTimeout(initialGeneration);
-    }, [availabilityDates, hasGenerated, selectedSetlist, selectedSpreadsheet]);
+    function generateOptions() {
+        if (hasGenerated) generate();
+        else setHasGenerated(true);
+    }
 
     function openSchedule(candidate: PracticeCandidate) {
         sessionStorage.setItem("polyjam-practice-schedule", JSON.stringify(candidate));
@@ -137,17 +134,19 @@ function Pratique() {
                 </div>
                 <div><label htmlFor="practice-forgiveness">Membres absents acceptés</label><input id="practice-forgiveness" type="number" min="0" max="20" value={forgiveness} onChange={(event) => setForgiveness(Number(event.target.value))} /></div>
                 <div><label htmlFor="practice-sort">Classer les résultats</label><select id="practice-sort" value={sortMode} onChange={(event) => setSortMode(event.target.value as "nearest" | "songs")}><option value="nearest">Plus proches de la date</option><option value="songs">Plus de chansons</option></select></div>
+                <button className="primary-action practice-generate-button" type="button" onClick={generateOptions} disabled={loading || !selectedSetlist || availabilityDates.length === 0 || generating}>{hasGenerated ? "Actualiser les options" : "Générer les options"}</button>
             </div>
             {setlists.length === 0 && !loading && <p className="empty-members">Aucune setlist trouvée.</p>}
             {!loading && setlists.length > 0 && !selectedSetlist && <p className="empty-members">Aucune setlist sélectionnée.</p>}
-            {candidates.length > 0 && <PracticeResults candidates={candidates} onSelect={openSchedule} />}
+            {candidates.length > 0 && <PracticeResults candidates={candidates} preferredDate={date} onSelect={openSchedule} />}
             {hasGenerated && !generating && availabilityDates.length > 0 && selectedSetlist && candidates.length === 0 && <p className="empty-members">Aucune date compatible trouvée avec ces paramètres.</p>}
         </div>
     );
 }
 
-function PracticeResults({ candidates, onSelect }: { candidates: PracticeCandidate[]; onSelect: (candidate: PracticeCandidate) => void }) {
-    return <section className="practice-results"><h2>Dates proposées</h2>{candidates.map((candidate) => <article className="practice-candidate" key={candidate.date}><div className="practice-candidate-heading"><div><p className="eyebrow">Pratique proposée</p><h3>{formatDisplayDate(candidate.date)}</h3>{candidate.event && <p>{candidate.event}</p>}</div><div><strong>{candidate.fullSongCount} complète{candidate.fullSongCount === 1 ? "" : "s"}</strong><span>{candidate.forgivenSongCount} avec tolérance</span></div></div><PracticeTable title="Chansons" songs={candidate.songs} workload={candidate.staffWorkload} /><button className="primary-action" type="button" onClick={() => onSelect(candidate)}>Choisir cette pratique</button></article>)}</section>;
+function PracticeResults({ candidates, preferredDate, onSelect }: { candidates: PracticeCandidate[]; preferredDate: string; onSelect: (candidate: PracticeCandidate) => void }) {
+    const hasPreferredDate = candidates.some((candidate) => candidate.date === preferredDate);
+    return <section className="practice-results"><h2>Dates proposées</h2>{!hasPreferredDate && <p className="empty-members">Aucune option disponible pour le {formatDisplayDate(preferredDate)}. Les autres dates possibles suivent.</p>}{candidates.map((candidate) => <article className="practice-candidate" key={candidate.date}><div className="practice-candidate-heading"><div><p className="eyebrow">Pratique proposée</p><h3>{formatDisplayDate(candidate.date)}</h3>{candidate.event && <p>{candidate.event}</p>}</div><div><strong>{candidate.fullSongCount} complète{candidate.fullSongCount === 1 ? "" : "s"}</strong><span>{candidate.forgivenSongCount} avec tolérance</span></div></div><PracticeTable title="Chansons" songs={candidate.songs} workload={candidate.staffWorkload} /><button className="primary-action" type="button" onClick={() => onSelect(candidate)}>Choisir cette pratique</button></article>)}</section>;
 }
 
 function PracticeTable({ title, songs, workload }: { title: string; songs: PracticeCandidate["songs"]; workload: Record<string, number> }) {
