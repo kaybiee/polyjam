@@ -14,6 +14,7 @@ interface SongOption {
     songId: string;
     title: string;
     artist: string;
+    readiness?: number;
 }
 
 export interface SongDraft {
@@ -21,6 +22,7 @@ export interface SongDraft {
     artist: string;
     staffMemberIds: string[];
     staffInstruments: Record<string, string>;
+    readiness: number;
 }
 
 interface SongModalProps {
@@ -43,6 +45,7 @@ function getInitialStaffInstruments(song: SongDraft | undefined, availableMember
 function SongModal({ members, existingSongs = [], initialSong, initialSongId = "", isEditing = false, onClose, onSubmit }: SongModalProps) {
     const [title, setTitle] = useState(initialSong?.title ?? "");
     const [artist, setArtist] = useState(initialSong?.artist ?? "");
+    const [readiness, setReadiness] = useState(initialSong?.readiness ?? 100);
     const [staffMemberIds, setStaffMemberIds] = useState<string[]>(initialSong?.staffMemberIds ?? []);
     const [staffSearch, setStaffSearch] = useState("");
     const staffSearchRef = useRef<HTMLInputElement>(null);
@@ -72,11 +75,11 @@ function SongModal({ members, existingSongs = [], initialSong, initialSongId = "
     function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (existingSongId) {
-            void onSubmit({ title: "", artist: "", staffMemberIds: [], staffInstruments: {} }, existingSongId);
+            void onSubmit({ title: "", artist: "", staffMemberIds: [], staffInstruments: {}, readiness }, existingSongId);
             return;
         }
         if (!title.trim() || !artist.trim() || staffMemberIds.length === 0 || staffMemberIds.some((memberId) => !staffInstruments[memberId])) return;
-        void onSubmit({ title: title.trim(), artist: artist.trim(), staffMemberIds, staffInstruments });
+        void onSubmit({ title: title.trim(), artist: artist.trim(), staffMemberIds, staffInstruments, readiness });
     }
 
     function selectStaff(memberId: string) {
@@ -104,7 +107,7 @@ function SongModal({ members, existingSongs = [], initialSong, initialSongId = "
                         <label htmlFor="existing-song">Ajouter une chanson existante</label>
                         <select id="existing-song" value={existingSongId} onChange={(event) => setExistingSongId(event.target.value)}>
                             <option value="">Nouvelle chanson</option>
-                            {existingSongs.map((song) => <option key={song.songId} value={song.songId}>{song.title} - {song.artist}</option>)}
+                            {existingSongs.map((song) => <option key={song.songId} value={song.songId}>{song.title} - {song.artist} ({song.readiness ?? 100}%)</option>)}
                         </select>
                     </div>}
                     {!existingSongId && <>
@@ -115,6 +118,11 @@ function SongModal({ members, existingSongs = [], initialSong, initialSongId = "
                         <div>
                             <label htmlFor="song-artist">Artiste</label>
                             <input id="song-artist" value={artist} onChange={(event) => setArtist(event.target.value)} maxLength={100} required />
+                        </div>
+                        <div className="song-readiness-control">
+                            <label htmlFor="song-readiness">Préparation</label>
+                            <input id="song-readiness" type="range" min="0" max="100" step="5" value={readiness} onChange={(event) => setReadiness(Number(event.target.value))} />
+                            <output htmlFor="song-readiness">{readiness}%</output>
                         </div>
                         <div>
                             <label htmlFor="song-staff">Staff</label>

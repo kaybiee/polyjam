@@ -131,17 +131,19 @@ function PracticeSchedule() {
         context.font = "bold 16px Arial";
         context.fillText("Début", 50, 155);
         context.fillText("Chanson", 180, 155);
-        context.fillText("Artiste", 450, 155);
-        context.fillText("Staff disponible", 610, 155);
-        context.fillText("Staff absent", 1020, 155);
+        context.fillText("Préparation", 450, 155);
+        context.fillText("Artiste", 560, 155);
+        context.fillText("Staff disponible", 700, 155);
+        context.fillText("Staff absent", 1040, 155);
         currentSchedule.songs.forEach((song, index) => {
             const y = 195 + index * 90;
             context.font = "17px Arial";
             drawWrappedText(context, song.startTime, 50, y, 100, 22);
             drawWrappedText(context, song.title, 180, y, 260, 22);
-            drawWrappedText(context, song.artist, 450, y, 140, 22);
-            drawWrappedText(context, song.availableStaff.join(", ") || "Aucun", 610, y, 390, 22);
-            drawWrappedText(context, song.missingStaff.join(", ") || "-", 1020, y, 150, 22);
+            drawWrappedText(context, `${song.readiness}%`, 450, y, 100, 22);
+            drawWrappedText(context, song.artist, 560, y, 130, 22);
+            drawWrappedText(context, song.availableStaff.join(", ") || "Aucun", 700, y, 320, 22);
+            drawWrappedText(context, song.missingStaff.join(", ") || "-", 1040, y, 130, 22);
         });
         const link = document.createElement("a");
         link.download = `pratique-${currentSchedule.date}.png`;
@@ -160,9 +162,9 @@ function PracticeSchedule() {
                 <button className="member-save-button" type="button" onClick={updateSchedule}>Recalculer</button>
                 <button className="primary-action" type="button" onClick={downloadImage}>Générer l'image</button>
             </div>
-            <div className="practice-table-wrap"><table className="practice-table"><thead><tr><th>Début</th><th>Durée</th><th>Chanson</th><th>Staff disponible</th><th>Staff absent</th><th>Ordre</th><th>Actions</th></tr></thead><tbody>{currentSchedule.songs.map((song, index) => <tr key={song.songId}><td>{song.startTime}</td><td><input className="schedule-song-duration" type="number" min="1" max="240" value={song.durationMinutes} onChange={(event) => updateSongDuration(song.songId, Number(event.target.value))} /> min</td><td>{song.title}</td><td>{song.availableStaff.join(", ") || "Aucun"}</td><td>{song.missingStaff.join(", ") || "-"}</td><td><button className="schedule-order-button" type="button" onClick={() => moveSong(song.songId, -1)} disabled={index === 0} aria-label="Monter">↑</button><button className="schedule-order-button" type="button" onClick={() => moveSong(song.songId, 1)} disabled={index === currentSchedule.songs.length - 1} aria-label="Descendre">↓</button></td><td><button className="schedule-order-button" type="button" onClick={() => removeSong(song.songId)} aria-label={`Retirer ${song.title}`} title="Retirer la chanson">×</button></td></tr>)}</tbody></table></div>
-            {source && <div className="schedule-add-song"><label htmlFor="schedule-add-song-select">Ajouter une chanson disponible</label><select id="schedule-add-song-select" value={songToAdd} onChange={(event) => setSongToAdd(event.target.value)} disabled={addableSongs.length === 0}><option value="">{addableSongs.length ? "Choisir une chanson" : "Aucune chanson disponible pour le temps restant"}</option>{addableSongs.map((song) => <option key={song.songId} value={song.songId}>{song.title} - {song.artist}</option>)}</select><button className="member-save-button" type="button" onClick={addSong} disabled={!songToAdd}>Ajouter</button></div>}
-            {currentSchedule.overflowSongs.length > 0 && <p className="members-error">Chansons non incluses : {currentSchedule.overflowSongs.join(", ")}</p>}
+            <div className="practice-table-wrap"><table className="practice-table"><thead><tr><th>Début</th><th>Durée</th><th>Chanson</th><th>Préparation</th><th>Staff disponible</th><th>Staff absent</th><th>Ordre</th><th>Actions</th></tr></thead><tbody>{currentSchedule.songs.map((song, index) => <tr key={song.songId}><td>{song.startTime}</td><td><input className="schedule-song-duration" type="number" min="1" max="240" value={song.durationMinutes} onChange={(event) => updateSongDuration(song.songId, Number(event.target.value))} /> min</td><td>{song.title}</td><td>{song.readiness}%</td><td>{song.availableStaff.join(", ") || "Aucun"}</td><td>{song.missingStaff.join(", ") || "-"}</td><td><button className="schedule-order-button" type="button" onClick={() => moveSong(song.songId, -1)} disabled={index === 0} aria-label="Monter">↑</button><button className="schedule-order-button" type="button" onClick={() => moveSong(song.songId, 1)} disabled={index === currentSchedule.songs.length - 1} aria-label="Descendre">↓</button></td><td><button className="schedule-order-button" type="button" onClick={() => removeSong(song.songId)} aria-label={`Retirer ${song.title}`} title="Retirer la chanson">×</button></td></tr>)}</tbody></table></div>
+            {source && <div className="schedule-add-song"><label htmlFor="schedule-add-song-select">Ajouter une chanson disponible</label><select id="schedule-add-song-select" value={songToAdd} onChange={(event) => setSongToAdd(event.target.value)} disabled={addableSongs.length === 0}><option value="">{addableSongs.length ? "Choisir une chanson" : "Aucune chanson disponible pour le temps restant"}</option>{addableSongs.map((song) => <option key={song.songId} value={song.songId}>{song.title} - {song.artist} ({song.readiness}%)</option>)}</select><button className="member-save-button" type="button" onClick={addSong} disabled={!songToAdd}>Ajouter</button></div>}
+            {currentSchedule.overflowSongs.length > 0 && <p className="members-error">Chansons non incluses : {currentSchedule.overflowSongs.map((title) => { const song = source?.setlistSongs.find((item) => item.title === title); return `${title} (${song?.readiness ?? 100}%)`; }).join(", ")}</p>}
         </div>
     );
 }

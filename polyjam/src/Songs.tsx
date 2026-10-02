@@ -17,6 +17,7 @@ interface Song {
     artist: string;
     staffMemberIds: string[];
     staffInstruments: Record<string, string>;
+    readiness: number;
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -80,11 +81,11 @@ function Songs() {
         setIsModalOpen(true);
     }
 
-    async function addSong({ title, artist, staffMemberIds, staffInstruments }: SongDraft) {
+    async function addSong({ title, artist, staffMemberIds, staffInstruments, readiness }: SongDraft) {
         if (!title || !artist || staffMemberIds.length === 0 || staffMemberIds.some((memberId) => !staffInstruments[memberId])) return;
         setError(null);
         setSuccess(null);
-        const song = { songId: editingSong?.songId ?? crypto.randomUUID(), title: title.trim(), artist: artist.trim(), staffMemberIds, staffInstruments };
+        const song = { songId: editingSong?.songId ?? crypto.randomUUID(), title: title.trim(), artist: artist.trim(), staffMemberIds, staffInstruments, readiness };
         try {
             const response = await apiFetch(`/api/songs/${song.songId}`, {
                 method: "PUT",
@@ -145,12 +146,13 @@ function Songs() {
             </div>
             {loading ? <p className="status-message">Chargement des chansons...</p> : (
                 <div className="songs-list">
-                    <div className="song-list-header" aria-hidden="true"><span>Titre</span><span>Artiste</span><span>Staff</span><span></span></div>
+                    <div className="song-list-header" aria-hidden="true"><span>Titre</span><span>Artiste</span><span>Staff</span><span>Préparation</span><span></span></div>
                     {sortedSongs.length > 0 ? sortedSongs.map((song) => (
                         <article className="song-card" key={song.songId}>
                             <strong>{song.title}</strong>
                             <span>{song.artist}</span>
                             <span>{memberNames(song.staffMemberIds, song.staffInstruments)}</span>
+                            <span className="song-readiness-value">{song.readiness}%</span>
                             <div className="song-card-actions">
                                 <button className="member-edit-button" type="button" onClick={() => openEditModal(song)} aria-label={`Modifier ${song.title}`} title="Modifier">✎</button>
                                 <button className="member-delete-button" type="button" onClick={() => deleteSong(song)} aria-label={`Supprimer ${song.title}`} title="Supprimer">🗑</button>
@@ -179,6 +181,7 @@ function normalizeSong(song: Song & { artistMemberId?: string; staffMemberId?: s
         artist: song.artist ?? song.artistMemberId ?? "",
         staffMemberIds: song.staffMemberIds ?? (song.staffMemberId ? [song.staffMemberId] : []),
         staffInstruments: song.staffInstruments ?? {},
+        readiness: song.readiness ?? 100,
     };
 }
 

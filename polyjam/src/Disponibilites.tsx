@@ -60,7 +60,6 @@ function Dispo() {
                 <div>
                     <h1>Disponibilités</h1>
                 </div>
-                <button className="document-action" type="button" aria-label="Ajouter aux favoris">☆</button>
             </div>
 
             <SpreadsheetSelector selectedSpreadsheet={selectedSpreadsheet} onFileSelected={selectSpreadsheet} onRefresh={() => setRefreshCount((current) => current + 1)} />

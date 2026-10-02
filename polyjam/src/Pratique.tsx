@@ -22,6 +22,7 @@ function Pratique() {
     const [members, setMembers] = useState<PracticeMember[]>([]);
     const [availabilityDates, setAvailabilityDates] = useState<AvailabilityDate[]>([]);
     const [selectedSetlistId, setSelectedSetlistId] = useState("");
+    const [selectedSongId, setSelectedSongId] = useState("");
     const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<SelectedSpreadsheet | null>(getSpreadsheetFromUrl);
     const [candidates, setCandidates] = useState<PracticeCandidate[]>([]);
     const [loading, setLoading] = useState(true);
@@ -84,10 +85,21 @@ function Pratique() {
         setGenerating(true);
         setError(null);
         const selectedSongs = selectedSetlist?.songIds.map((songId) => songs.find((song) => song.songId === songId)).filter((song): song is PracticeSong => Boolean(song)) ?? [];
-        const generated = generatePracticeCandidates(availabilityDates, selectedSongs, members, startTime, endTime, 15, forgiveness);
-        setCandidates(sortCandidates(generated, sortMode, date));
+        const searchDates = selectedSongId
+            ? availabilityDates.filter((availabilityDate) => availabilityDate.date >= date)
+            : availabilityDates;
+        const generated = generatePracticeCandidates(searchDates, selectedSongs, members, startTime, endTime, 15, forgiveness, selectedSongId || undefined);
+        const filteredCandidates = selectedSongId
+            ? generated.filter((candidate) => candidate.songs.some((song) => song.songId === selectedSongId))
+            : generated;
+        setCandidates(selectedSongId
+            ? filteredCandidates.sort((left, right) => left.date.localeCompare(right.date))
+            : sortCandidates(filteredCandidates, sortMode, date));
         setGenerating(false);
-    }, [availabilityDates, date, endTime, forgiveness, members, selectedSetlist, songs, sortMode, startTime]);
+    }, [availabilityDates, date, endTime, forgiveness, members, selectedSetlist, selectedSongId, songs, sortMode, startTime]);
+    const selectedSetlistSongs = selectedSetlist?.songIds
+        .map((songId) => songs.find((song) => song.songId === songId))
+        .filter((song): song is PracticeSong => Boolean(song)) ?? [];
 
     useEffect(() => {
         if (!hasGenerated) return;
@@ -127,7 +139,8 @@ function Pratique() {
             {error && <p className="status-message error-message">{error}</p>}
             <div className="pratique-form">
                 <div><label htmlFor="practice-date">Date de référence</label><input id="practice-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} /></div>
-                <div><label htmlFor="practice-setlist">Setlist</label><select id="practice-setlist" value={selectedSetlistId} onChange={(event) => setSelectedSetlistId(event.target.value)} disabled={loading}><option value="">Choisissez une setlist</option>{setlists.map((setlist) => <option key={setlist.setlistId} value={setlist.setlistId}>{setlist.name}</option>)}</select></div>
+                <div><label htmlFor="practice-setlist">Setlist</label><select id="practice-setlist" value={selectedSetlistId} onChange={(event) => { setSelectedSetlistId(event.target.value); setSelectedSongId(""); }} disabled={loading}><option value="">Choisissez une setlist</option>{setlists.map((setlist) => <option key={setlist.setlistId} value={setlist.setlistId}>{setlist.name}</option>)}</select></div>
+                <div><label htmlFor="practice-song">Trouver la prochaine pratique pour une chanson (facultatif)</label><select id="practice-song" value={selectedSongId} onChange={(event) => setSelectedSongId(event.target.value)} disabled={!selectedSetlist}><option value="">Toutes les chansons</option>{selectedSetlistSongs.map((song) => <option key={song.songId} value={song.songId}>{song.title} - {song.artist} ({song.readiness ?? 100}%)</option>)}</select></div>
                 <div className="practice-time-fields">
                     <div><label htmlFor="practice-start">Début</label><input id="practice-start" type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} aria-invalid={timeToMinutes(startTime) === null || timeToMinutes(endTime) === null || timeToMinutes(startTime)! >= timeToMinutes(endTime)!} /></div>
                     <div><label htmlFor="practice-end">Fin</label><input id="practice-end" type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} aria-invalid={timeToMinutes(startTime) === null || timeToMinutes(endTime) === null || timeToMinutes(startTime)! >= timeToMinutes(endTime)!} /></div>
@@ -139,7 +152,7 @@ function Pratique() {
             {setlists.length === 0 && !loading && <p className="empty-members">Aucune setlist trouvée.</p>}
             {!loading && setlists.length > 0 && !selectedSetlist && <p className="empty-members">Aucune setlist sélectionnée.</p>}
             {candidates.length > 0 && <PracticeResults candidates={candidates} preferredDate={date} onSelect={openSchedule} />}
-            {hasGenerated && !generating && availabilityDates.length > 0 && selectedSetlist && candidates.length === 0 && <p className="empty-members">Aucune date compatible trouvée avec ces paramètres.</p>}
+            {hasGenerated && !generating && availabilityDates.length > 0 && selectedSetlist && candidates.length === 0 && <p className="empty-members">{selectedSongId ? `Aucune pratique pour « ${selectedSetlistSongs.find((song) => song.songId === selectedSongId)?.title ?? "cette chanson"} » à partir du ${formatDisplayDate(date)} dans les dates disponibles.` : "Aucune date compatible trouvée avec ces paramètres."}</p>}
         </div>
     );
 }
@@ -150,7 +163,7 @@ function PracticeResults({ candidates, preferredDate, onSelect }: { candidates: 
 }
 
 function PracticeTable({ title, songs, workload }: { title: string; songs: PracticeCandidate["songs"]; workload: Record<string, number> }) {
-    return <div className="practice-table-wrap"><h3>{title}</h3>{songs.length === 0 ? <p className="empty-members">Aucune chanson</p> : <table className="practice-table"><thead><tr><th>Début</th><th>Durée</th><th>Chanson</th><th>Artiste</th><th>Staff disponible</th><th>Staff absent</th></tr></thead><tbody>{songs.map((song) => <tr key={song.songId}><td>{song.startTime}</td><td>{song.durationMinutes} min</td><td>{song.title}</td><td>{song.artist}</td><td><StaffList names={song.availableStaff} workload={workload} /></td><td>{song.missingStaff.join(", ") || "-"}</td></tr>)}</tbody></table>}</div>;
+    return <div className="practice-table-wrap"><h3>{title}</h3>{songs.length === 0 ? <p className="empty-members">Aucune chanson</p> : <table className="practice-table"><thead><tr><th>Début</th><th>Durée</th><th>Chanson</th><th>Préparation</th><th>Artiste</th><th>Staff disponible</th><th>Staff absent</th></tr></thead><tbody>{songs.map((song) => <tr key={song.songId}><td>{song.startTime}</td><td>{song.durationMinutes} min</td><td>{song.title}</td><td>{song.readiness}%</td><td>{song.artist}</td><td><StaffList names={song.availableStaff} workload={workload} /></td><td>{song.missingStaff.join(", ") || "-"}</td></tr>)}</tbody></table>}</div>;
 }
 
 function StaffList({ names, workload }: { names: string[]; workload: Record<string, number> }) {

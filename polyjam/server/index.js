@@ -189,6 +189,7 @@ app.get("/api/setlists", requireAllowedGoogleUser, async (_request, response) =>
                     artist: song.artist ?? song.artistMemberId ?? "",
                     staffMemberIds: song.staffMemberIds ?? (song.staffMemberId ? [song.staffMemberId] : []),
                                     staffInstruments: song.staffInstruments ?? {},
+                    readiness: song.readiness ?? 100,
                 };
                 if (songs) await songs.replaceOne({ songId }, reusableSong, { upsert: true });
                 else fallbackSongs.set(songId, reusableSong);
@@ -242,6 +243,9 @@ app.put("/api/songs/:songId", requireAllowedGoogleUser, async (request, response
         staffInstruments: request.body?.staffInstruments && typeof request.body.staffInstruments === "object"
             ? Object.fromEntries(Object.entries(request.body.staffInstruments).filter(([memberId, instrument]) => typeof memberId === "string" && typeof instrument === "string" && instrument.trim()).map(([memberId, instrument]) => [memberId, instrument.trim()]))
             : {},
+        readiness: Number.isFinite(request.body?.readiness)
+            ? Math.min(100, Math.max(0, Math.round(request.body.readiness)))
+            : 100,
     };
     if (!songId || !song.title || song.title.length > 100 || !song.artist || song.artist.length > 100 || song.staffMemberIds.length === 0) {
         response.status(400).json({ error: "Chanson invalide." });
