@@ -43,6 +43,8 @@ app.use(cors({
     origin: [
         "http://localhost:5173",
         "https://kaybiee.github.io",
+        "https://polyjam.ca",
+        "https://www.polyjam.ca",
     ],
 }));
 app.use(express.json({ limit: "16kb" }));
