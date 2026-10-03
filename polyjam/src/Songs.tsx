@@ -146,7 +146,7 @@ function Songs() {
             </div>
             {loading ? <p className="status-message">Chargement des chansons...</p> : (
                 <div className="songs-list">
-                    <div className="song-list-header" aria-hidden="true"><span>Titre</span><span>Artiste</span><span>Staff</span><span>Préparation</span><span></span></div>
+                    <div className="song-list-header" aria-hidden="true"><span>Titre</span><span>Artiste</span><span>Staff</span><span>Show Ready (%)</span><span></span></div>
                     {sortedSongs.length > 0 ? sortedSongs.map((song) => (
                         <article className="song-card" key={song.songId}>
                             <strong>{song.title}</strong>
@@ -181,7 +181,7 @@ function normalizeSong(song: Song & { artistMemberId?: string; staffMemberId?: s
         artist: song.artist ?? song.artistMemberId ?? "",
         staffMemberIds: song.staffMemberIds ?? (song.staffMemberId ? [song.staffMemberId] : []),
         staffInstruments: song.staffInstruments ?? {},
-        readiness: song.readiness ?? 100,
+        readiness: song.readiness ?? 0,
     };
 }
 

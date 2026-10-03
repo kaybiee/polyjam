@@ -287,6 +287,12 @@ code {
   padding: 20px;
 }
 
+@media (max-width: 1024px) {
+  .pratique-form {
+    grid-template-columns: 1fr;
+  }
+}
+
 .practice-time-fields {
   display: grid;
   gap: 10px;
@@ -317,6 +323,30 @@ code {
 .practice-generate-button {
   grid-column: 1 / -1;
   justify-self: start;
+}
+
+.practice-loading-message {
+  align-items: center;
+  color: var(--text);
+  display: flex;
+  font-size: 14px;
+  gap: 10px;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.practice-loading-message::before {
+  animation: practice-loading-spin 0.8s linear infinite;
+  border: 2px solid var(--border);
+  border-right-color: var(--text-h);
+  border-radius: 50%;
+  content: "";
+  height: 14px;
+  width: 14px;
+}
+
+@keyframes practice-loading-spin {
+  to { transform: rotate(360deg); }
 }
 
 .practice-results {
@@ -390,6 +420,18 @@ code {
   color: var(--text);
   font-size: 11px;
   text-transform: uppercase;
+}
+
+.practice-table tbody tr[draggable="true"] {
+  cursor: grab;
+}
+
+.practice-table tbody tr.is-dragging {
+  opacity: 0.45;
+}
+
+.practice-table tbody tr.is-drop-target td {
+  border-top: 2px solid var(--accent);
 }
 
 .practice-staff-list {
@@ -1610,10 +1652,14 @@ body {
   font-size: 11px;
   font-weight: 700;
   gap: 8px 20px;
-  grid-template-columns: minmax(140px, 1.5fr) minmax(140px, 1fr) minmax(140px, 1fr) 100px 65px;
+  grid-template-columns: minmax(140px, 1.5fr) minmax(140px, 1fr) minmax(140px, 1fr) 120px 65px;
   letter-spacing: 0.04em;
   padding: 10px 0 6px;
   text-transform: uppercase;
+}
+
+.song-list-header span:nth-child(4) {
+  white-space: nowrap;
 }
 
 .song-card {
@@ -1621,7 +1667,7 @@ body {
   border-bottom: 1px solid var(--border);
   display: grid;
   gap: 8px 20px;
-  grid-template-columns: minmax(140px, 1.5fr) minmax(140px, 1fr) minmax(140px, 1fr) 100px 65px;
+  grid-template-columns: minmax(140px, 1.5fr) minmax(140px, 1fr) minmax(140px, 1fr) 120px 65px;
   padding: 14px 0;
 }
 
@@ -1637,10 +1683,9 @@ body {
 }
 
 .song-readiness-control {
-  align-items: center;
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(0, 1fr) 48px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .song-readiness-control label {
@@ -1649,7 +1694,14 @@ body {
 
 .song-readiness-control input {
   accent-color: var(--accent);
+  box-sizing: border-box;
   padding: 0;
+  width: 100%;
+}
+
+.song-readiness-control input[aria-invalid="true"] {
+  border-color: #c62828;
+  box-shadow: 0 0 0 1px #c62828;
 }
 
 .song-readiness-control output {
@@ -1709,13 +1761,13 @@ body {
   border-bottom: 1px solid var(--border);
   display: grid;
   gap: 8px 16px;
-  grid-template-columns: minmax(120px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) 100px 65px;
+  grid-template-columns: minmax(120px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) 120px 65px;
   padding: 12px 0;
 }
 
 .setlist-songs .song-list-header {
   gap: 8px 16px;
-  grid-template-columns: minmax(120px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) 100px 65px;
+  grid-template-columns: minmax(120px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) 120px 65px;
 }
 
 .setlist-song span {
@@ -1882,6 +1934,7 @@ button.instrument-chip:hover {
 }
 
 .member-edit-button,
+.member-songs-button,
 .member-delete-button {
   align-items: center;
   background: transparent;
@@ -1901,6 +1954,8 @@ button.instrument-chip:hover {
 }
 
 .member-edit-button:hover,
+.member-songs-button:hover,
+.member-songs-button:focus-visible,
 .member-edit-button:focus-visible {
   border-color: var(--accent);
   outline: 0;
@@ -2018,6 +2073,35 @@ button.instrument-chip:hover {
   width: 100%;
 }
 
+.assigned-songs-modal {
+  max-height: min(80vh, 720px);
+  max-width: 560px;
+  overflow-y: auto;
+}
+
+.assigned-song-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.assigned-song-list li {
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 5px 16px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 12px 0;
+}
+
+.assigned-song-list strong {
+  color: var(--text-h);
+}
+
+.assigned-song-list span {
+  color: var(--text);
+  font-size: 13px;
+}
+
 .modal-heading {
   align-items: start;
   display: flex;
@@ -2131,7 +2215,7 @@ button.instrument-chip:hover {
   align-items: center;
   display: flex;
   gap: 18px;
-  padding: 0 78px 0 0;
+  padding: 0 112px 0 0;
 }
 
 .members-list .member-card-content > strong {

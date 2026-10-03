@@ -14,6 +14,15 @@ interface Member {
     updatedAt?: string;
 }
 
+interface AssignedSong {
+    songId: string;
+    title: string;
+    artist: string;
+    staffMemberIds: string[];
+    staffInstruments?: Record<string, string>;
+    readiness?: number;
+}
+
 const instruments = ["Bass", "Batterie", "Clavier", "Chant", "Flûte", "Guitare", "Saxophone", "Trompette", "Trombone", "Tuba", "Violon", "Backs", "Aux Percs", "Clavier Alt"];
 
 function getMemberInstruments(member: Member) {
@@ -32,6 +41,7 @@ function getAuthHeaders(): Record<string, string> {
 
 function Membres() {
     const [members, setMembers] = useState<Member[]>([]);
+    const [songs, setSongs] = useState<AssignedSong[]>([]);
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [selectedInstruments, setSelectedInstruments] = useState<string[]>([]);
@@ -44,12 +54,14 @@ function Membres() {
     const [saving, setSaving] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingMember, setEditingMember] = useState<Member | null>(null);
+    const [songsMember, setSongsMember] = useState<Member | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [sortMode, setSortMode] = useState<"name" | "instrument">("name");
     const [instrumentFilter, setInstrumentFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
     const modalRef = useRef<HTMLElement>(null);
+    const songsModalRef = useRef<HTMLElement>(null);
     const firstInstrumentOptionRef = useRef<HTMLButtonElement>(null);
 
     const filteredInstruments = instruments
@@ -57,15 +69,27 @@ function Membres() {
         .sort((left, right) => left.localeCompare(right, "fr"));
 
     useModalFocusTrap(modalRef);
+    useModalFocusTrap(songsModalRef);
 
     useEffect(() => {
-        apiFetch("/api/members", { headers: getAuthHeaders() })
-            .then((response) => {
+        Promise.allSettled([
+            apiFetch("/api/members", { headers: getAuthHeaders() }).then(async (response) => {
                 if (!response.ok) throw new Error();
-                return response.json() as Promise<Member[]>;
+                return await response.json() as Member[];
+            }),
+            apiFetch("/api/songs", { headers: getAuthHeaders() }).then(async (response) => {
+                if (!response.ok) throw new Error();
+                return await response.json() as AssignedSong[];
+            }),
+        ])
+            .then(([membersResult, songsResult]) => {
+                const errors: string[] = [];
+                if (membersResult.status === "fulfilled") setMembers(membersResult.value);
+                else errors.push("Impossible de charger les membres.");
+                if (songsResult.status === "fulfilled") setSongs(songsResult.value);
+                else errors.push("Impossible de charger les chansons assignées.");
+                if (errors.length > 0) setError(errors.join(" "));
             })
-            .then(setMembers)
-            .catch(() => setError("Impossible de charger les membres."))
             .finally(() => setLoading(false));
     }, []);
 
@@ -157,6 +181,7 @@ function Membres() {
             : getMemberInstruments(right).join(", ");
         return leftValue.localeCompare(rightValue, "fr") || left.name.localeCompare(right.name, "fr");
     });
+    const assignedSongs = songsMember ? songs.filter((song) => song.staffMemberIds.includes(songsMember.memberId)) : [];
 
     return (
         <div className="drive-document members-page">
@@ -262,6 +287,29 @@ function Membres() {
                 </div>
             )}
 
+            {songsMember && (
+                <div className="modal-backdrop" role="presentation" onMouseDown={() => setSongsMember(null)}>
+                    <section ref={songsModalRef} className="member-modal assigned-songs-modal" role="dialog" aria-modal="true" aria-labelledby="assigned-songs-title" onMouseDown={(event) => event.stopPropagation()}>
+                        <div className="modal-heading">
+                            <div>
+                                <p className="eyebrow">Membre</p>
+                                <h2 id="assigned-songs-title">Chansons de {songsMember.name}</h2>
+                            </div>
+                            <button className="modal-close" type="button" onClick={() => setSongsMember(null)} aria-label="Fermer">×</button>
+                        </div>
+                        {assignedSongs.length > 0 ? (
+                            <ul className="assigned-song-list">
+                                {assignedSongs.map((song) => <li key={song.songId}>
+                                    <strong>{song.title}</strong>
+                                    <span>{song.artist}</span>
+                                    <span>{song.staffInstruments?.[songsMember.memberId] ?? songsMember.mainInstrument ?? "Instrument non défini"}</span>
+                                </li>)}
+                            </ul>
+                        ) : <p className="empty-members">Aucune chanson assignée à ce membre.</p>}
+                    </section>
+                </div>
+            )}
+
             {error && <p className="members-error">{error}</p>}
             {success && <p className="members-success">{success}</p>}
             {loading ? <p className="status-message">Chargement des membres...</p> : (
@@ -280,6 +328,7 @@ function Membres() {
                                     {getMemberInstruments(member).map((option) => <span className={`instrument-chip${member.mainInstrument === option || (!member.mainInstrument && getMemberInstruments(member).length === 1) ? " main-instrument" : ""}`} key={option}>{option}</span>)}
                                 </div>
                                 <div className="member-card-actions">
+                                    <button className="member-songs-button" type="button" onClick={() => setSongsMember(member)} aria-label={`Voir les chansons de ${member.name}`} title="Chansons assignées">♫</button>
                                     <button className="member-edit-button" type="button" onClick={() => openEditModal(member)} aria-label={`Modifier ${member.name}`} title="Modifier">✎</button>
                                     <button className="member-delete-button" type="button" onClick={() => deleteMember(member)} aria-label={`Supprimer ${member.name}`} title="Supprimer">🗑</button>
                                 </div>

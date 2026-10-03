@@ -139,8 +139,9 @@ function Spreadsheet({ url, accessToken, onTokenExpired }: SpreadsheetProps) {
             }
 
             setData(parsedData);
-            setSelectedDate(parsedData[0]?.date ?? null);
-            setMonthCursor(parsedData[0]?.date.slice(0, 7) ?? "");
+            const today = formatIsoDate(new Date());
+            setSelectedDate(today);
+            setMonthCursor(today.slice(0, 7));
         } catch (err) {
             console.error(err);
 

@@ -74,6 +74,19 @@ export interface PracticeScheduleSource {
 
 const optionalRoles = new Set(["Backs", "Aux Percs", "Clavier Alt"]);
 
+export function getAvailabilityDatesInRange(dates: AvailabilityDate[], startDate: string, endDate?: string): AvailabilityDate[] {
+    const rangeEnd = endDate || addDaysToIsoDate(startDate, 7);
+    if (!startDate || !rangeEnd || rangeEnd < startDate) return [];
+    return dates.filter((availabilityDate) => availabilityDate.date >= startDate && availabilityDate.date <= rangeEnd);
+}
+
+function addDaysToIsoDate(value: string, days: number) {
+    const date = new Date(`${value}T00:00:00Z`);
+    if (Number.isNaN(date.getTime())) return "";
+    date.setUTCDate(date.getUTCDate() + days);
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
 export function getAvailablePracticeSongs(
     source: PracticeScheduleSource,
     scheduledSongs: ScheduledSong[],
@@ -90,7 +103,7 @@ export function getAvailablePracticeSongs(
     const midpoint = slotStart + Math.floor((slotEnd - slotStart) / 2);
     const scheduledIds = new Set([...scheduledSongs.map((song) => song.songId), ...excludedSongIds]);
     return [...source.setlistSongs]
-        .sort((left, right) => (left.readiness ?? 100) - (right.readiness ?? 100))
+        .sort((left, right) => (left.readiness ?? 0) - (right.readiness ?? 0))
         .flatMap((song) => {
         if (scheduledIds.has(song.songId)) return [];
         const result = buildScheduledSong(
@@ -103,6 +116,29 @@ export function getAvailablePracticeSongs(
             source.forgiveness,
         );
         return result ? [result.song] : [];
+    });
+}
+
+export function getRestrictedStaffUnavailableForSong(
+    source: PracticeScheduleSource,
+    songId: string,
+    startTime: string,
+    durationMinutes: number,
+    scheduleStartTime: string,
+    scheduleEndTime: string,
+) {
+    const song = source.setlistSongs.find((item) => item.songId === songId);
+    if (!song) return [];
+    const midpoint = timeToMinutes(scheduleStartTime) + Math.floor((timeToMinutes(scheduleEndTime) - timeToMinutes(scheduleStartTime)) / 2);
+    const requiredHalves = getRequiredAvailabilityHalves(timeToMinutes(startTime), durationMinutes, midpoint);
+    return song.staffMemberIds.flatMap((memberId) => {
+        const member = source.members.find((item) => item.memberId === memberId);
+        if (!member) return [];
+        const person = findSpreadsheetPerson(member.name, source.availabilityDate.people);
+        if (!person) return [];
+        const unavailable = (person.availability.kind === "firstHalf" && requiredHalves.includes("second")) ||
+            (person.availability.kind === "secondHalf" && requiredHalves.includes("first"));
+        return unavailable ? [member.name] : [];
     });
 }
 
@@ -170,29 +206,45 @@ export function generatePracticeCandidates(
         const workload: Record<string, number> = {};
         let optionalStaffCount = 0;
         let cursor = slot.from;
-        [...setlistSongs].sort((left, right) => {
-            if (prioritySongId) {
-                if (left.songId === prioritySongId) return -1;
-                if (right.songId === prioritySongId) return 1;
+        const remainingSongs = [...setlistSongs];
+        while (remainingSongs.length > 0) {
+            if (cursor + durationMinutes > slot.to) {
+                overflowSongs.push(...remainingSongs.map((song) => song.title));
+                break;
             }
-            return (left.readiness ?? 100) - (right.readiness ?? 100);
-        }).forEach((song) => {
-                if (cursor + durationMinutes > slot.to) {
-                    overflowSongs.push(song.title);
-                    return;
-                }
+            const availableSongs = remainingSongs.flatMap((song) => {
                 const result = buildScheduledSong(song, members, date, cursor, durationMinutes, midpoint, forgiveness);
-                if (!result) return;
-                optionalStaffCount += result.optionalStaffCount;
-                songs.push(result.song);
-                cursor += durationMinutes;
-                song.staffMemberIds.forEach((id) => { workload[id] = (workload[id] ?? 0) + 1; });
-        });
+                return result ? [{ song, result }] : [];
+            });
+            availableSongs.sort((left, right) => {
+                if (prioritySongId) {
+                    if (left.song.songId === prioritySongId) return -1;
+                    if (right.song.songId === prioritySongId) return 1;
+                }
+                if (left.result.song.fullStaff !== right.result.song.fullStaff) {
+                    return Number(right.result.song.fullStaff) - Number(left.result.song.fullStaff);
+                }
+                if (left.result.song.missingStaff.length !== right.result.song.missingStaff.length) {
+                    return left.result.song.missingStaff.length - right.result.song.missingStaff.length;
+                }
+                return (left.song.readiness ?? 0) - (right.song.readiness ?? 0);
+            });
+            const selected = availableSongs[0];
+            if (!selected) break;
+            remainingSongs.splice(remainingSongs.indexOf(selected.song), 1);
+            optionalStaffCount += selected.result.optionalStaffCount;
+            songs.push(selected.result.song);
+            cursor += durationMinutes;
+            selected.song.staffMemberIds.forEach((id) => { workload[id] = (workload[id] ?? 0) + 1; });
+        }
         if (songs.length > 0) {
                 const staffWorkload: Record<string, number> = {};
-                songs.forEach((song) => song.availableStaff.forEach((staffName) => {
-                    staffWorkload[staffName] = (staffWorkload[staffName] ?? 0) + 1;
-                }));
+                songs.forEach((song) => {
+                    const staffNames = new Set(song.availableStaff.map(getStaffWorkloadKey));
+                    staffNames.forEach((staffName) => {
+                        staffWorkload[staffName] = (staffWorkload[staffName] ?? 0) + 1;
+                    });
+                });
             candidates.push({
                     date: date.date,
                     event: date.event,
@@ -224,11 +276,11 @@ export function sortCandidates(candidates: PracticeCandidate[], mode: "nearest" 
         const leftDistance = dateDistance(left.date, preferredDate ?? formatIsoDate(new Date()));
         const rightDistance = dateDistance(right.date, preferredDate ?? formatIsoDate(new Date()));
         const leftScore = mode === "nearest"
-            ? [left.readinessPriority, left.fullSongCount, left.optionalStaffCount, -leftDistance, left.songs.length, leftWorkload, -left.forgivenSongCount]
-            : [left.readinessPriority, left.fullSongCount, left.optionalStaffCount, left.songs.length, leftWorkload, -left.forgivenSongCount, -leftDistance];
+            ? [left.fullSongCount, left.readinessPriority, left.optionalStaffCount, -leftDistance, left.songs.length, leftWorkload, -left.forgivenSongCount]
+            : [left.fullSongCount, left.readinessPriority, left.optionalStaffCount, left.songs.length, leftWorkload, -left.forgivenSongCount, -leftDistance];
         const rightScore = mode === "nearest"
-            ? [right.readinessPriority, right.fullSongCount, right.optionalStaffCount, -rightDistance, right.songs.length, rightWorkload, -right.forgivenSongCount]
-            : [right.readinessPriority, right.fullSongCount, right.optionalStaffCount, right.songs.length, rightWorkload, -right.forgivenSongCount, -rightDistance];
+            ? [right.fullSongCount, right.readinessPriority, right.optionalStaffCount, -rightDistance, right.songs.length, rightWorkload, -right.forgivenSongCount]
+            : [right.fullSongCount, right.readinessPriority, right.optionalStaffCount, right.songs.length, rightWorkload, -right.forgivenSongCount, -rightDistance];
         for (let index = 0; index < leftScore.length; index++) {
             if (leftScore[index] !== rightScore[index]) return rightScore[index] - leftScore[index];
         }
@@ -245,6 +297,11 @@ export function minutesToTime(value: number) {
     return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
 }
 
+export function getStaffWorkloadKey(staffLabel: string) {
+    const roleStart = staffLabel.lastIndexOf(" (");
+    return roleStart >= 0 && staffLabel.endsWith(")") ? staffLabel.slice(0, roleStart) : staffLabel;
+}
+
 function buildScheduledSong(
     song: PracticeSong,
     members: PracticeMember[],
@@ -254,11 +311,7 @@ function buildScheduledSong(
     midpoint: number,
     forgiveness: number,
 ) {
-    const requiredHalves = start + durationMinutes <= midpoint
-        ? ["first" as const]
-        : start >= midpoint
-            ? ["second" as const]
-            : ["first" as const, "second" as const];
+    const requiredHalves = getRequiredAvailabilityHalves(start, durationMinutes, midpoint);
     const staff = song.staffMemberIds.map((id) => ({
         id,
         name: members.find((member) => member.memberId === id)?.name ?? "Membre introuvable",
@@ -288,6 +341,7 @@ function buildScheduledSong(
         return substitute ? [`${substitute.name} (${requiredInstrument})`] : [];
     });
     const missingRequiredNames = missingRequiredStaff.map((member) => `${member.name} (${member.instrument})`);
+    if (missingRequiredStaff.some((member) => member.instrument === "Chant")) return null;
     if (missingRequiredNames.length > forgiveness || substitutes.length < missingRequiredNames.length) return null;
 
     return {
@@ -307,10 +361,18 @@ function buildScheduledSong(
                 ...missingOptionalStaff.map((member) => `${member.name} (${member.instrument}, optionnel)`),
             ],
             fullStaff: missingRequiredNames.length === 0,
-            readiness: song.readiness ?? 100,
+            readiness: song.readiness ?? 0,
         } satisfies ScheduledSong,
         optionalStaffCount: availableOptionalStaff.length,
     };
+}
+
+function getRequiredAvailabilityHalves(start: number, durationMinutes: number, midpoint: number) {
+    return start + durationMinutes <= midpoint
+        ? ["first" as const]
+        : start >= midpoint
+            ? ["second" as const]
+            : ["first" as const, "second" as const];
 }
 
 function findSpreadsheetPerson(memberName: string, people: AvailabilityPerson[]) {
