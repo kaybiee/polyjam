@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import SpreadsheetSelector, { type SelectedSpreadsheet } from "./SpreadsheetSelector";
-import { generatePracticeCandidates, getAvailabilityDatesInRange, getStaffWorkloadKey, parseSpreadsheetRows, sortCandidates, type AvailabilityDate, type PracticeCandidate, type PracticeMember, type PracticeScheduleSource, type PracticeSong } from "./practiceScheduling";
+import { generatePracticeCandidates, getAvailabilityDatesInRange, getSongAttendance, getStaffWorkloadKey, parseSpreadsheetRows, sortCandidates, type AvailabilityDate, type PracticeCandidate, type PracticeMember, type PracticeScheduleSource, type PracticeSong } from "./practiceScheduling";
 import { apiFetch } from "./api";
 
 interface Setlist { setlistId: string; name: string; songIds: string[]; }
@@ -12,18 +12,22 @@ function getAuthHeaders(): Record<string, string> {
 }
 
 function Pratique() {
-    const [date, setDate] = useState(new URLSearchParams(window.location.search).get("date") ?? formatIsoDate(new Date()));
-    const [endDate, setEndDate] = useState(new URLSearchParams(window.location.search).get("endDate") ?? "");
-    const [startTime, setStartTime] = useState("18:00");
-    const [endTime, setEndTime] = useState("20:00");
-    const [forgiveness, setForgiveness] = useState(0);
+    const initialParams = new URLSearchParams(window.location.search);
+    const [date, setDate] = useState(initialParams.get("date") ?? formatIsoDate(new Date()));
+    const [endDate, setEndDate] = useState(initialParams.get("endDate") ?? "");
+    const [startTime, setStartTime] = useState(initialParams.get("startTime") ?? "18:00");
+    const [endTime, setEndTime] = useState(initialParams.get("endTime") ?? "20:00");
+    const [forgiveness, setForgiveness] = useState(Number(initialParams.get("forgiveness") ?? 0));
     const [sortMode, setSortMode] = useState<"nearest" | "songs">("songs");
+    const [prioritizeCompleteSongs, setPrioritizeCompleteSongs] = useState(true);
+    const [requireSingersForChantNecessaire, setRequireSingersForChantNecessaire] = useState(false);
+    const [singerOnly, setSingerOnly] = useState(false);
     const [setlists, setSetlists] = useState<Setlist[]>([]);
     const [songs, setSongs] = useState<PracticeSong[]>([]);
     const [members, setMembers] = useState<PracticeMember[]>([]);
     const [availabilityDates, setAvailabilityDates] = useState<AvailabilityDate[]>([]);
     const [selectedSetlistId, setSelectedSetlistId] = useState("");
-    const [selectedSongId, setSelectedSongId] = useState("");
+    const [selectedSongId, setSelectedSongId] = useState(initialParams.get("song") ?? "");
     const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<SelectedSpreadsheet | null>(getSpreadsheetFromUrl);
     const [candidates, setCandidates] = useState<PracticeCandidate[]>([]);
     const [loading, setLoading] = useState(true);
@@ -92,14 +96,17 @@ function Pratique() {
         const filteredCandidates = selectedSongId
             ? generated.filter((candidate) => candidate.songs.some((song) => song.songId === selectedSongId))
             : generated;
-        setCandidates(selectedSongId
-            ? filteredCandidates.sort((left, right) => left.date.localeCompare(right.date))
-            : sortCandidates(filteredCandidates, sortMode, date));
+        setCandidates(sortCandidates(filteredCandidates, sortMode, date, prioritizeCompleteSongs));
         setGenerating(false);
-    }, [availabilityDates, date, endDate, endTime, forgiveness, members, selectedSetlist, selectedSongId, songs, sortMode, startTime]);
+    }, [availabilityDates, date, endDate, endTime, forgiveness, members, prioritizeCompleteSongs, selectedSetlist, selectedSongId, songs, sortMode, startTime]);
     const selectedSetlistSongs = selectedSetlist?.songIds
         .map((songId) => songs.find((song) => song.songId === songId))
         .filter((song): song is PracticeSong => Boolean(song)) ?? [];
+    const requestedSong = selectedSetlistSongs.find((song) => song.songId === selectedSongId);
+    const requestedAvailabilityDate = availabilityDates.find((availabilityDate) => availabilityDate.date === date);
+    const requestedSongAttendance = requestedSong && requestedAvailabilityDate
+        ? getSongAttendance(requestedSong, members, requestedAvailabilityDate, startTime, endTime)
+        : null;
 
     function generateOptions() {
         setHasGenerated(true);
@@ -119,6 +126,8 @@ function Pratique() {
                 members,
                 forgiveness,
                 durationMinutes: 15,
+                requireSingersForChantNecessaire,
+                singerOnly,
             };
             sessionStorage.setItem("polyjam-practice-source", JSON.stringify(source));
         }
@@ -142,13 +151,18 @@ function Pratique() {
                 </div>
                 <div><label htmlFor="practice-forgiveness">Membres absents acceptés</label><input id="practice-forgiveness" type="number" min="0" max="20" value={forgiveness} onChange={(event) => setForgiveness(Number(event.target.value))} /></div>
                 <div><label htmlFor="practice-sort">Classer les résultats</label><select id="practice-sort" value={sortMode} onChange={(event) => setSortMode(event.target.value as "nearest" | "songs")}><option value="songs">Plus de chansons</option><option value="nearest">Plus proches de la date</option></select></div>
+                <label className="practice-priority-toggle"><input type="checkbox" checked={prioritizeCompleteSongs} onChange={(event) => setPrioritizeCompleteSongs(event.target.checked)} /><span>Prioriser les chansons complètes</span></label>
+                <label className="practice-priority-toggle"><input type="checkbox" checked={requireSingersForChantNecessaire} onChange={(event) => setRequireSingersForChantNecessaire(event.target.checked)} /><span>Exiger les chanteurs pour « Chant nécessaire »</span></label>
+                <label className="practice-priority-toggle"><input type="checkbox" checked={singerOnly} onChange={(event) => setSingerOnly(event.target.checked)} /><span>Pratique réservée aux chanteurs</span></label>
                 <button className="primary-action practice-generate-button" type="button" onClick={generateOptions} disabled={loading || !selectedSetlist || availabilityDates.length === 0 || generating}>{hasGenerated ? "Actualiser les options" : "Générer les options"}</button>
                 {generating && <p className="practice-loading-message" role="status" aria-live="polite">Recherche des dates de pratique...</p>}
             </div>
             {setlists.length === 0 && !loading && <p className="empty-members">Aucune setlist trouvée.</p>}
             {!loading && setlists.length > 0 && !selectedSetlist && <p className="empty-members">Aucune setlist sélectionnée.</p>}
             {candidates.length > 0 && <PracticeResults candidates={candidates} preferredDate={date} onSelect={openSchedule} />}
-            {hasGenerated && !generating && availabilityDates.length > 0 && selectedSetlist && candidates.length === 0 && <p className="empty-members">{selectedSongId ? `Aucune pratique pour « ${selectedSetlistSongs.find((song) => song.songId === selectedSongId)?.title ?? "cette chanson"} » à partir du ${formatDisplayDate(date)} dans les dates disponibles.` : "Aucune date compatible trouvée avec ces paramètres."}</p>}
+            {hasGenerated && !generating && availabilityDates.length > 0 && selectedSetlist && candidates.length === 0 && <p className="empty-members">{selectedSongId
+                ? `Aucune pratique pour « ${requestedSong?.title ?? "cette chanson"} » le ${formatDisplayDate(date)}.${requestedSongAttendance?.missingStaff.length ? ` Staff absent sur ce créneau : ${[...new Set(requestedSongAttendance.missingStaff.map((staff) => staff.instrument))].join(", ")}.` : " Vérifiez les paramètres de pratique et les remplacements disponibles."}`
+                : "Aucune date compatible trouvée avec ces paramètres."}</p>}
         </div>
     );
 }
@@ -159,11 +173,11 @@ function PracticeResults({ candidates, preferredDate, onSelect }: { candidates: 
 }
 
 function PracticeTable({ title, songs, workload }: { title: string; songs: PracticeCandidate["songs"]; workload: Record<string, number> }) {
-    return <div className="practice-table-wrap"><h3>{title}</h3>{songs.length === 0 ? <p className="empty-members">Aucune chanson</p> : <table className="practice-table"><thead><tr><th>Début</th><th>Durée</th><th>Chanson</th><th>Show Ready (%)</th><th>Artiste</th><th>Staff disponible</th><th>Staff absent</th></tr></thead><tbody>{songs.map((song) => <tr key={song.songId}><td>{song.startTime}</td><td>{song.durationMinutes} min</td><td>{song.title}</td><td>{song.readiness}%</td><td>{song.artist}</td><td><StaffList names={song.availableStaff} workload={workload} /></td><td>{song.missingStaff.join(", ") || "-"}</td></tr>)}</tbody></table>}</div>;
+    return <div className="practice-table-wrap"><h3>{title}</h3>{songs.length === 0 ? <p className="empty-members">Aucune chanson</p> : <table className="practice-table"><thead><tr><th>Début</th><th>Durée</th><th>Chanson</th><th>Show Ready (%)</th><th>Artiste</th><th>Staff disponible</th><th>Staff absent</th></tr></thead><tbody>{songs.map((song) => <tr key={song.songId}><td>{song.startTime}</td><td>{song.durationMinutes} min</td><td>{song.title}</td><td>{song.readiness}%</td><td>{song.artist}</td><td><StaffList names={song.availableStaff} replacementStaff={song.replacementStaff ?? []} workload={workload} /></td><td>{song.missingStaff.join(", ") || "-"}</td></tr>)}</tbody></table>}</div>;
 }
 
-function StaffList({ names, workload }: { names: string[]; workload: Record<string, number> }) {
-    return <span className="practice-staff-list">{names.length > 0 ? names.map((name) => { const songCount = workload[getStaffWorkloadKey(name)] ?? 0; return <span className={songCount === 1 ? "single-song-staff" : "multi-song-staff"} key={name}>{name} ({songCount} chanson{songCount === 1 ? "" : "s"})</span>; }) : "Aucun"}</span>;
+function StaffList({ names, replacementStaff, workload }: { names: string[]; replacementStaff: string[]; workload: Record<string, number> }) {
+    return <span className="practice-staff-list">{names.length > 0 ? names.map((name) => { const songCount = workload[getStaffWorkloadKey(name)] ?? 0; const isReplacement = replacementStaff.includes(name); return <span className={isReplacement ? "replacement-staff" : songCount === 1 ? "single-song-staff" : "multi-song-staff"} key={name}>{name} ({songCount} chanson{songCount === 1 ? "" : "s"})</span>; }) : "Aucun"}</span>;
 }
 
 async function fetchCollection<T>(url: string): Promise<T[]> { const response = await apiFetch(url, { headers: getAuthHeaders() }); if (!response.ok) throw new Error(); const value = await response.json() as unknown; if (!Array.isArray(value)) throw new Error(); return value as T[]; }
@@ -171,8 +185,14 @@ function getSpreadsheetFromUrl(): SelectedSpreadsheet | null {
     const parameters = new URLSearchParams(window.location.search);
     const id = parameters.get("file");
     const name = parameters.get("name");
-    if (!id || !name) return null;
-    return { id, name, accessToken: sessionStorage.getItem(`polyjam-token-${id}`) || undefined };
+    if (id && name) return { id, name, accessToken: sessionStorage.getItem(`polyjam-token-${id}`) || undefined };
+    try {
+        const stored = JSON.parse(localStorage.getItem("polyjam-selected-spreadsheet") ?? "null") as { id?: unknown; name?: unknown } | null;
+        if (typeof stored?.id !== "string" || typeof stored.name !== "string") return null;
+        return { id: stored.id, name: stored.name, accessToken: sessionStorage.getItem(`polyjam-token-${stored.id}`) || undefined };
+    } catch {
+        return null;
+    }
 }
 function formatIsoDate(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
 function formatDisplayDate(date: string) { return new Date(`${date}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); }

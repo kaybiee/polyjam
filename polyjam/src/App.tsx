@@ -6,6 +6,7 @@ import Setlists from "./Setlists";
 import Songs from "./Songs";
 import Pratique from "./Pratique.tsx";
 import PracticeSchedule from "./PracticeSchedule";
+import PracticeMatrix from "./PracticeMatrix";
 import GoogleSignInButton from "./GoogleSignInButton";
 import SignInPage from "./SignInPage";
 import darkLogo from "./assets/polyjamdarkmode.png";
@@ -183,6 +184,7 @@ export default function App() {
         <Route path="/setlists" element={<Setlists />} />
         <Route path="/songs" element={<Songs />} />
         <Route path="/pratique" element={<Pratique />} />
+        <Route path="/pratique/matrix" element={<PracticeMatrix />} />
         <Route path="/pratique/schedule" element={<PracticeSchedule />} />
       </Routes>
         </main>

@@ -18,6 +18,7 @@ interface Song {
     staffMemberIds: string[];
     staffInstruments: Record<string, string>;
     readiness: number;
+    chantNecessaire: boolean;
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -81,11 +82,11 @@ function Songs() {
         setIsModalOpen(true);
     }
 
-    async function addSong({ title, artist, staffMemberIds, staffInstruments, readiness }: SongDraft) {
+    async function addSong({ title, artist, staffMemberIds, staffInstruments, readiness, chantNecessaire }: SongDraft) {
         if (!title || !artist || staffMemberIds.length === 0 || staffMemberIds.some((memberId) => !staffInstruments[memberId])) return;
         setError(null);
         setSuccess(null);
-        const song = { songId: editingSong?.songId ?? crypto.randomUUID(), title: title.trim(), artist: artist.trim(), staffMemberIds, staffInstruments, readiness };
+        const song = { songId: editingSong?.songId ?? crypto.randomUUID(), title: title.trim(), artist: artist.trim(), staffMemberIds, staffInstruments, readiness, chantNecessaire };
         try {
             const response = await apiFetch(`/api/songs/${song.songId}`, {
                 method: "PUT",
@@ -182,6 +183,7 @@ function normalizeSong(song: Song & { artistMemberId?: string; staffMemberId?: s
         staffMemberIds: song.staffMemberIds ?? (song.staffMemberId ? [song.staffMemberId] : []),
         staffInstruments: song.staffInstruments ?? {},
         readiness: song.readiness ?? 0,
+        chantNecessaire: song.chantNecessaire ?? false,
     };
 }
 

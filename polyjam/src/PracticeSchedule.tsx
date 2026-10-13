@@ -13,6 +13,7 @@ function PracticeSchedule() {
         try { return JSON.parse(sessionStorage.getItem("polyjam-practice-source") ?? "null") as PracticeScheduleSource | null; } catch { return null; }
     });
     const [songToAdd, setSongToAdd] = useState("");
+    const [songToReplace, setSongToReplace] = useState("");
     const [staffCopyStatus, setStaffCopyStatus] = useState("");
     const [draggedSongId, setDraggedSongId] = useState<string | null>(null);
     const [dropTargetSongId, setDropTargetSongId] = useState<string | null>(null);
@@ -24,8 +25,14 @@ function PracticeSchedule() {
     if (!schedule) return null;
     const currentSchedule = schedule;
     const addableSongs = source
-        ? getAvailablePracticeSongs(source, currentSchedule.songs, currentSchedule.startTime, currentSchedule.endTime, currentSchedule.excludedSongIds)
+        ? getAvailablePracticeSongs(source, currentSchedule.songs, currentSchedule.startTime, currentSchedule.endTime, currentSchedule.excludedSongIds, songToReplace || undefined, true)
         : [];
+    const staffSongCounts: Record<string, number> = {};
+    currentSchedule.songs.forEach((song) => {
+        new Set(song.availableStaff.map(getStaffWorkloadKey)).forEach((staffName) => {
+            staffSongCounts[staffName] = (staffSongCounts[staffName] ?? 0) + 1;
+        });
+    });
     const compiledStaff = [...new Set(currentSchedule.songs.flatMap((song) => song.availableStaff.map((staff) => {
         const name = getStaffWorkloadKey(staff).trim();
         const nameParts = name.split(/\s+/);
@@ -47,6 +54,7 @@ function PracticeSchedule() {
         const scheduledSongs: ScheduledSong[] = [];
         const overflowSongs = [...current.overflowSongs];
         songs.forEach((song) => {
+            cursor = Math.max(cursor, timeToMinutes(song.startTime));
             if (cursor + song.durationMinutes > scheduleEnd) {
                 overflowSongs.push(song.title);
                 return;
@@ -89,11 +97,12 @@ function PracticeSchedule() {
         );
     }
 
-    function addSong() {
+    function replaceSong() {
         const selectedSong = addableSongs.find((song) => song.songId === songToAdd);
-        if (!selectedSong) return;
-        saveSongs([...currentSchedule.songs, selectedSong], currentSchedule);
+        if (!selectedSong || !songToReplace) return;
+        saveSongs(currentSchedule.songs.map((song) => song.songId === songToReplace ? selectedSong : song), currentSchedule);
         setSongToAdd("");
+        setSongToReplace("");
     }
 
     function updateSchedule() {
@@ -113,15 +122,16 @@ function PracticeSchedule() {
         setSchedule((current) => {
             if (!current) return current;
             const songs = current.songs.map((song) => song.songId === songId ? { ...song, durationMinutes } : song);
-            const totalDuration = songs.reduce((total, song) => total + song.durationMinutes, 0);
-            if (totalDuration > timeToMinutes(endTime) - timeToMinutes(startTime)) return current;
             let cursor = timeToMinutes(startTime);
             const scheduledSongs = songs.map((song) => {
+                cursor = Math.max(cursor, timeToMinutes(song.startTime));
+                if (cursor + song.durationMinutes > timeToMinutes(endTime)) return null;
                 const updatedSong = { ...song, startTime: minutesToTime(cursor) };
                 cursor += song.durationMinutes;
                 return updatedSong;
             });
-            const updated = { ...current, songs: scheduledSongs };
+            if (scheduledSongs.some((song) => song === null)) return current;
+            const updated = { ...current, songs: scheduledSongs as ScheduledSong[] };
             sessionStorage.setItem("polyjam-practice-schedule", JSON.stringify(updated));
             return updated;
         });
@@ -138,7 +148,8 @@ function PracticeSchedule() {
         songs.splice(insertIndex, 0, movedSong);
 
         let cursor = timeToMinutes(startTime);
-        const proposedStart = songs.slice(0, insertIndex).reduce((time, song) => time + song.durationMinutes, cursor);
+        const proposedStart = songs.slice(0, insertIndex).reduce((time, song) =>
+            Math.max(time, timeToMinutes(song.startTime)) + song.durationMinutes, cursor);
         if (source) {
             const unavailableStaff = getRestrictedStaffUnavailableForSong(
                 source,
@@ -154,6 +165,7 @@ function PracticeSchedule() {
         }
 
         const updated = { ...currentSchedule, songs: songs.map((song) => {
+            cursor = Math.max(cursor, timeToMinutes(song.startTime));
             const updatedSong = { ...song, startTime: minutesToTime(cursor) };
             cursor += song.durationMinutes;
             return updatedSong;
@@ -221,9 +233,8 @@ function PracticeSchedule() {
                 <button className="member-save-button" type="button" onClick={copyStaffList} disabled={compiledStaff.length === 0}>Copier la liste du staff</button>
             </div>
             {staffCopyStatus && <p className="status-message" role="status" aria-live="polite">{staffCopyStatus}</p>}
-            <div className="practice-table-wrap"><table className="practice-table"><thead><tr><th>Début</th><th>Durée</th><th>Chanson</th><th>Show Ready (%)</th><th>Staff disponible</th><th>Staff absent</th><th>Actions</th></tr></thead><tbody>{currentSchedule.songs.map((song) => <tr key={song.songId} draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", song.songId); setDraggedSongId(song.songId); }} onDragEnd={() => { setDraggedSongId(null); setDropTargetSongId(null); }} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; setDropTargetSongId(song.songId); }} onDrop={(event) => handleSongDrop(event, song.songId)} className={`${draggedSongId === song.songId ? "is-dragging " : ""}${dropTargetSongId === song.songId && draggedSongId !== song.songId ? "is-drop-target" : ""}`} title="Glisser pour réorganiser"><td>{song.startTime}</td><td><input className="schedule-song-duration" type="number" min="1" max="240" value={song.durationMinutes} onChange={(event) => updateSongDuration(song.songId, Number(event.target.value))} /> min</td><td>{song.title}</td><td>{song.readiness}%</td><td>{song.availableStaff.join(", ") || "Aucun"}</td><td>{song.missingStaff.join(", ") || "-"}</td><td><button className="schedule-order-button" type="button" onClick={() => removeSong(song.songId)} aria-label={`Retirer ${song.title}`} title="Retirer la chanson">×</button></td></tr>)}</tbody></table></div>
-            {source && <div className="schedule-add-song"><label htmlFor="schedule-add-song-select">Ajouter une chanson disponible</label><select id="schedule-add-song-select" value={songToAdd} onChange={(event) => setSongToAdd(event.target.value)} disabled={addableSongs.length === 0}><option value="">{addableSongs.length ? "Choisir une chanson" : "Aucune autre chanson disponible"}</option>{addableSongs.map((song) => <option key={song.songId} value={song.songId}>{song.title} - {song.artist}</option>)}</select><button className="member-save-button" type="button" onClick={addSong} disabled={!songToAdd}>Ajouter</button></div>}
-            {currentSchedule.overflowSongs.length > 0 && <p className="members-error">Chansons non incluses : {currentSchedule.overflowSongs.map((title) => { const song = source?.setlistSongs.find((item) => item.title === title); return `${title} (${song?.readiness ?? 0}%)`; }).join(", ")}</p>}
+            <div className="practice-table-wrap"><table className="practice-table"><thead><tr><th>Début</th><th>Durée</th><th>Chanson</th><th>Show Ready (%)</th><th>Staff disponible</th><th>Staff absent</th><th>Actions</th></tr></thead><tbody>{currentSchedule.songs.map((song) => <tr key={song.songId} draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", song.songId); setDraggedSongId(song.songId); }} onDragEnd={() => { setDraggedSongId(null); setDropTargetSongId(null); }} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; setDropTargetSongId(song.songId); }} onDrop={(event) => handleSongDrop(event, song.songId)} className={`${draggedSongId === song.songId ? "is-dragging " : ""}${dropTargetSongId === song.songId && draggedSongId !== song.songId ? "is-drop-target" : ""}`} title="Glisser pour réorganiser"><td>{song.startTime}</td><td><input className="schedule-song-duration" type="number" min="1" max="240" value={song.durationMinutes} onChange={(event) => updateSongDuration(song.songId, Number(event.target.value))} /> min</td><td>{song.title}</td><td>{song.readiness}%</td><td><span className="practice-staff-list">{song.availableStaff.length > 0 ? song.availableStaff.map((staff) => { const count = staffSongCounts[getStaffWorkloadKey(staff)] ?? 0; const className = song.replacementStaff?.includes(staff) ? "replacement-staff" : count === 1 ? "single-song-staff" : "multi-song-staff"; return <span className={className} key={staff}>{staff}</span>; }) : "Aucun"}</span></td><td>{song.missingStaff.join(", ") || "-"}</td><td><button className="schedule-order-button" type="button" onClick={() => removeSong(song.songId)} aria-label={`Retirer ${song.title}`} title="Retirer la chanson">×</button></td></tr>)}</tbody></table></div>
+            {source && <div className="schedule-add-song"><label htmlFor="schedule-add-song-select">Remplacer une chanson dans la durée prévue</label><select id="schedule-add-song-select" value={songToAdd} onChange={(event) => setSongToAdd(event.target.value)} disabled={addableSongs.length === 0}><option value="">{addableSongs.length ? "Choisir une chanson disponible" : "Aucune chanson compatible"}</option>{addableSongs.map((song) => <option key={song.songId} value={song.songId}>{song.title} - {song.artist}</option>)}</select><select aria-label="Chanson à remplacer" value={songToReplace} onChange={(event) => { setSongToReplace(event.target.value); setSongToAdd(""); }}><option value="">Choisir la chanson à remplacer</option>{currentSchedule.songs.map((song) => <option key={song.songId} value={song.songId}>{song.title}</option>)}</select><button className="member-save-button" type="button" onClick={replaceSong} disabled={!songToAdd || !songToReplace || !addableSongs.some((song) => song.songId === songToAdd)}>Remplacer</button></div>}
         </div>
     );
 }

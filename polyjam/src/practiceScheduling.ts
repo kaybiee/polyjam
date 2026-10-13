@@ -42,6 +42,7 @@ export interface ScheduledSong {
     startTime: string;
     durationMinutes: number;
     availableStaff: string[];
+    replacementStaff?: string[];
     missingStaff: string[];
     fullStaff: boolean;
     readiness: number;
@@ -70,6 +71,8 @@ export interface PracticeScheduleSource {
     members: PracticeMember[];
     forgiveness: number;
     durationMinutes: number;
+    requireSingersForChantNecessaire?: boolean;
+    singerOnly?: boolean;
 }
 
 const optionalRoles = new Set(["Backs", "Aux Percs", "Clavier Alt"]);
@@ -93,29 +96,37 @@ export function getAvailablePracticeSongs(
     scheduleStartTime: string,
     scheduleEndTime: string,
     excludedSongIds: string[] = [],
+    replacementSongId?: string,
+    includeOccupiedSlots = false,
 ): ScheduledSong[] {
     const slotStart = timeToMinutes(scheduleStartTime);
     const slotEnd = timeToMinutes(scheduleEndTime);
-    const cursor = slotStart + scheduledSongs.reduce((total, song) => total + song.durationMinutes, 0);
-    const duration = source.durationMinutes;
-    if (cursor + duration > slotEnd) return [];
-
+    const replacementSong = scheduledSongs.find((song) => song.songId === replacementSongId);
+    const cursor = scheduledSongs.reduce(
+        (time, song) => Math.max(time, timeToMinutes(song.startTime) + song.durationMinutes),
+        slotStart,
+    );
+    const duration = replacementSong?.durationMinutes ?? source.durationMinutes;
+    const possibleStarts = replacementSong
+        ? [timeToMinutes(replacementSong.startTime)]
+        : includeOccupiedSlots
+            ? Array.from({ length: Math.floor((slotEnd - slotStart) / duration) + 1 }, (_, index) => slotStart + index * duration)
+            : [cursor];
     const midpoint = slotStart + Math.floor((slotEnd - slotStart) / 2);
-    const scheduledIds = new Set([...scheduledSongs.map((song) => song.songId), ...excludedSongIds]);
+    const scheduledIds = new Set([
+        ...scheduledSongs.filter((song) => song.songId !== replacementSongId).map((song) => song.songId),
+        ...excludedSongIds,
+    ]);
     return [...source.setlistSongs]
         .sort((left, right) => (left.readiness ?? 0) - (right.readiness ?? 0))
         .flatMap((song) => {
         if (scheduledIds.has(song.songId)) return [];
-        const result = buildScheduledSong(
-            song,
-            source.members,
-            source.availabilityDate,
-            cursor,
-            duration,
-            midpoint,
-            source.forgiveness,
-        );
-        return result ? [result.song] : [];
+        for (const slotStart of possibleStarts) {
+            if (slotStart + duration > slotEnd) continue;
+            const result = buildScheduledSong(song, source.members, source.availabilityDate, slotStart, duration, midpoint, source.forgiveness);
+            if (result) return [result.song];
+        }
+        return [];
     });
 }
 
@@ -140,6 +151,44 @@ export function getRestrictedStaffUnavailableForSong(
             (person.availability.kind === "secondHalf" && requiredHalves.includes("first"));
         return unavailable ? [member.name] : [];
     });
+}
+
+export function getSongAttendance(
+    song: PracticeSong,
+    members: PracticeMember[],
+    date: AvailabilityDate,
+    startTime: string,
+    endTime: string,
+    durationMinutes = 15,
+) {
+    const start = timeToMinutes(startTime);
+    const end = timeToMinutes(endTime);
+    const midpoint = start + Math.floor((end - start) / 2);
+    const requiredStaff = song.staffMemberIds.flatMap((memberId) => {
+        const member = members.find((item) => item.memberId === memberId);
+        if (!member) return [];
+        const instrument = song.staffInstruments?.[memberId] ?? member.mainInstrument ?? "Instrument non défini";
+        return optionalRoles.has(instrument) ? [] : [{ member, instrument }];
+    });
+    const possibleStarts = [start, Math.max(start, midpoint)]
+        .filter((slotStart, index, starts) => starts.indexOf(slotStart) === index && slotStart + durationMinutes <= end);
+    const attendanceOptions = possibleStarts.map((slotStart) => {
+        const requiredHalves = getRequiredAvailabilityHalves(slotStart, durationMinutes, midpoint);
+        const missingStaff = requiredStaff.flatMap(({ member, instrument }) => {
+            const person = findSpreadsheetPerson(member.name, date.people);
+            const available = requiredHalves.every((half) => Boolean(person?.availability[half]));
+            return available ? [] : [{ name: member.name, instrument }];
+        });
+        return { missingStaff, missingCount: missingStaff.length };
+    });
+    const attendance = attendanceOptions.reduce((best, option) => option.missingCount < best.missingCount ? option : best, {
+        missingStaff: requiredStaff.map(({ member, instrument }) => ({ name: member.name, instrument })),
+        missingCount: requiredStaff.length,
+    });
+    return {
+        requiredStaffCount: requiredStaff.length,
+        ...attendance,
+    };
 }
 
 export function parseSpreadsheetRows(rows: unknown[][]): AvailabilityDate[] {
@@ -214,12 +263,36 @@ export function generatePracticeCandidates(
             }
             const availableSongs = remainingSongs.flatMap((song) => {
                 const result = buildScheduledSong(song, members, date, cursor, durationMinutes, midpoint, forgiveness);
-                return result ? [{ song, result }] : [];
+                if (!result) return [];
+                if (cursor < midpoint && !result.song.fullStaff && midpoint + durationMinutes <= slot.to) {
+                    const laterFullStaffResult = buildScheduledSong(song, members, date, midpoint, durationMinutes, midpoint, 0);
+                    if (laterFullStaffResult?.song.fullStaff) return [];
+                }
+                return [{ song, result }];
             });
+            if (availableSongs.length === 0 && cursor < midpoint && midpoint + durationMinutes <= slot.to) {
+                cursor = midpoint;
+                continue;
+            }
+            if (availableSongs.length === 0) break;
             availableSongs.sort((left, right) => {
                 if (prioritySongId) {
                     if (left.song.songId === prioritySongId) return -1;
                     if (right.song.songId === prioritySongId) return 1;
+                }
+                if (cursor >= midpoint) {
+                    const isSecondHalfOnly = (song: PracticeSong) => {
+                        const firstHalfResult = buildScheduledSong(song, members, date, start, durationMinutes, midpoint, forgiveness);
+                        if (!firstHalfResult) return true;
+                        if (!firstHalfResult.song.fullStaff) {
+                            const secondHalfResult = buildScheduledSong(song, members, date, midpoint, durationMinutes, midpoint, 0);
+                            if (secondHalfResult?.song.fullStaff) return true;
+                        }
+                        return false;
+                    };
+                    const leftSecondHalfOnly = isSecondHalfOnly(left.song);
+                    const rightSecondHalfOnly = isSecondHalfOnly(right.song);
+                    if (leftSecondHalfOnly !== rightSecondHalfOnly) return Number(rightSecondHalfOnly) - Number(leftSecondHalfOnly);
                 }
                 if (left.result.song.fullStaff !== right.result.song.fullStaff) {
                     return Number(right.result.song.fullStaff) - Number(left.result.song.fullStaff);
@@ -265,22 +338,26 @@ export function generatePracticeCandidates(
     return candidates;
 }
 
-export function sortCandidates(candidates: PracticeCandidate[], mode: "nearest" | "songs", preferredDate?: string) {
+export function sortCandidates(
+    candidates: PracticeCandidate[],
+    mode: "nearest" | "songs",
+    preferredDate?: string,
+    prioritizeCompleteSongs = true,
+) {
     return [...candidates].sort((left, right) => {
-        if (preferredDate && left.date !== right.date) {
-            if (left.date === preferredDate) return -1;
-            if (right.date === preferredDate) return 1;
+        if (prioritizeCompleteSongs && (left.fullSongCount > 0) !== (right.fullSongCount > 0)) {
+            return Number(right.fullSongCount > 0) - Number(left.fullSongCount > 0);
         }
         const leftWorkload = Object.values(left.workload).filter((count) => count > 1).reduce((sum, count) => sum + count, 0);
         const rightWorkload = Object.values(right.workload).filter((count) => count > 1).reduce((sum, count) => sum + count, 0);
         const leftDistance = dateDistance(left.date, preferredDate ?? formatIsoDate(new Date()));
         const rightDistance = dateDistance(right.date, preferredDate ?? formatIsoDate(new Date()));
         const leftScore = mode === "nearest"
-            ? [left.fullSongCount, left.readinessPriority, left.optionalStaffCount, -leftDistance, left.songs.length, leftWorkload, -left.forgivenSongCount]
-            : [left.fullSongCount, left.readinessPriority, left.optionalStaffCount, left.songs.length, leftWorkload, -left.forgivenSongCount, -leftDistance];
+            ? [-leftDistance, left.songs.length, left.readinessPriority, left.optionalStaffCount, leftWorkload]
+            : [left.songs.length, left.readinessPriority, left.optionalStaffCount, leftWorkload, -leftDistance];
         const rightScore = mode === "nearest"
-            ? [right.fullSongCount, right.readinessPriority, right.optionalStaffCount, -rightDistance, right.songs.length, rightWorkload, -right.forgivenSongCount]
-            : [right.fullSongCount, right.readinessPriority, right.optionalStaffCount, right.songs.length, rightWorkload, -right.forgivenSongCount, -rightDistance];
+            ? [-rightDistance, right.songs.length, right.readinessPriority, right.optionalStaffCount, rightWorkload]
+            : [right.songs.length, right.readinessPriority, right.optionalStaffCount, rightWorkload, -rightDistance];
         for (let index = 0; index < leftScore.length; index++) {
             if (leftScore[index] !== rightScore[index]) return rightScore[index] - leftScore[index];
         }
@@ -356,6 +433,7 @@ function buildScheduledSong(
                 ...availableOptionalStaff.map((member) => `${member.name} (${member.instrument})`),
                 ...substitutes,
             ],
+            replacementStaff: substitutes,
             missingStaff: [
                 ...missingRequiredNames,
                 ...missingOptionalStaff.map((member) => `${member.name} (${member.instrument}, optionnel)`),

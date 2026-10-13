@@ -18,6 +18,7 @@ interface Song {
     staffMemberIds: string[];
     staffInstruments: Record<string, string>;
     readiness: number;
+    chantNecessaire: boolean;
 }
 
 interface Setlist {
@@ -104,7 +105,7 @@ function Setlists() {
         }
     }
 
-    async function addSong({ title, artist, staffMemberIds, staffInstruments, readiness }: SongDraft, existingSongId?: string) {
+    async function addSong({ title, artist, staffMemberIds, staffInstruments, readiness, chantNecessaire }: SongDraft, existingSongId?: string) {
         if (!selectedSetlist) return;
         if (existingSongId) {
             await saveSetlistData({ ...selectedSetlist, songIds: [...selectedSetlist.songIds, existingSongId] });
@@ -112,7 +113,7 @@ function Setlists() {
             return;
         }
         if (!title || !artist || staffMemberIds.length === 0) return;
-        const song = { songId: editingSong?.songId ?? crypto.randomUUID(), title, artist, staffMemberIds, staffInstruments, readiness };
+        const song = { songId: editingSong?.songId ?? crypto.randomUUID(), title, artist, staffMemberIds, staffInstruments, readiness, chantNecessaire };
         try {
             const songResponse = await apiFetch(`/api/songs/${song.songId}`, {
                 method: "PUT",
@@ -195,7 +196,7 @@ function Setlists() {
                             {selectedSetlist && <button className="member-delete-button" type="button" onClick={deleteSetlist} aria-label="Supprimer la setlist" title="Supprimer">🗑</button>}
                         </form>
                         {selectedSetlist ? <>
-                            <h2>Chansons</h2>
+                            <div className="setlist-song-heading"><h2>Chansons</h2><Link className="member-add-button setlist-matrix-link" to={`/pratique/matrix?setlist=${encodeURIComponent(selectedSetlist.setlistId)}`}>Générer la matrice des disponibilités</Link></div>
                             <div className="setlist-songs">
                                 <div className="song-list-header" aria-hidden="true"><span>Titre</span><span>Artiste</span><span>Staff</span><span>Show Ready (%)</span><span></span></div>
                                 {selectedSetlist.songIds.map((songId) => songs.find((song) => song.songId === songId)).filter((song): song is Song => Boolean(song)).map((song) => <div className="setlist-song" key={song.songId}><strong>{song.title}</strong><span>{song.artist}</span><span>{memberNames(song.staffMemberIds, song.staffInstruments)}</span><span className="song-readiness-value">{song.readiness}%</span><div className="song-card-actions"><button className="member-edit-button" type="button" onClick={() => { setEditingSong(song); setIsSongModalOpen(true); }} aria-label={`Modifier ${song.title}`} title="Modifier">✎</button><button className="member-delete-button" type="button" onClick={() => removeSong(song.songId)} aria-label={`Supprimer ${song.title}`} title="Supprimer">×</button></div></div>)}
@@ -235,6 +236,7 @@ function normalizeSong(song: Song & { artistMemberId?: string; staffMemberId?: s
         staffMemberIds: song.staffMemberIds ?? (song.staffMemberId ? [song.staffMemberId] : []),
         staffInstruments: song.staffInstruments ?? {},
         readiness: song.readiness ?? 0,
+        chantNecessaire: song.chantNecessaire ?? false,
     };
 }
 

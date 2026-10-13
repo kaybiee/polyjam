@@ -23,6 +23,7 @@ export interface SongDraft {
     staffMemberIds: string[];
     staffInstruments: Record<string, string>;
     readiness: number;
+    chantNecessaire: boolean;
 }
 
 interface SongModalProps {
@@ -46,6 +47,7 @@ function SongModal({ members, existingSongs = [], initialSong, initialSongId = "
     const [title, setTitle] = useState(initialSong?.title ?? "");
     const [artist, setArtist] = useState(initialSong?.artist ?? "");
     const [readiness, setReadiness] = useState(String(initialSong?.readiness ?? 0));
+    const [chantNecessaire, setChantNecessaire] = useState(initialSong?.chantNecessaire ?? false);
     const [staffMemberIds, setStaffMemberIds] = useState<string[]>(initialSong?.staffMemberIds ?? []);
     const [staffSearch, setStaffSearch] = useState("");
     const staffSearchRef = useRef<HTMLInputElement>(null);
@@ -75,12 +77,12 @@ function SongModal({ members, existingSongs = [], initialSong, initialSongId = "
     function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (existingSongId) {
-            void onSubmit({ title: "", artist: "", staffMemberIds: [], staffInstruments: {}, readiness: Number(readiness) }, existingSongId);
+            void onSubmit({ title: "", artist: "", staffMemberIds: [], staffInstruments: {}, readiness: Number(readiness), chantNecessaire }, existingSongId);
             return;
         }
         const readinessValue = Number(readiness);
         if (readiness === "" || readinessValue > 100 || !title.trim() || !artist.trim() || staffMemberIds.length === 0 || staffMemberIds.some((memberId) => !staffInstruments[memberId])) return;
-        void onSubmit({ title: title.trim(), artist: artist.trim(), staffMemberIds, staffInstruments, readiness: readinessValue });
+        void onSubmit({ title: title.trim(), artist: artist.trim(), staffMemberIds, staffInstruments, readiness: readinessValue, chantNecessaire });
     }
 
     function selectStaff(memberId: string) {
@@ -124,6 +126,7 @@ function SongModal({ members, existingSongs = [], initialSong, initialSongId = "
                             <label htmlFor="song-readiness">Show Ready (%)</label>
                             <input id="song-readiness" type="text" inputMode="numeric" pattern="[0-9]*" value={readiness} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setReadiness(event.target.value.replace(/\D/g, ""))} aria-invalid={readiness === "" || Number(readiness) > 100} required />
                         </div>
+                        <label className="song-flag-toggle" htmlFor="song-chant-necessaire"><input id="song-chant-necessaire" type="checkbox" checked={chantNecessaire} onChange={(event) => setChantNecessaire(event.target.checked)} /><span>Chant nécessaire</span></label>
                         <div>
                             <label htmlFor="song-staff">Staff</label>
                             <div className="instrument-picker staff-picker">

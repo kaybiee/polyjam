@@ -320,6 +320,36 @@ code {
   width: 100%;
 }
 
+.pratique-form .practice-priority-toggle {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.pratique-form .practice-priority-toggle input {
+  flex: 0 0 auto;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  width: 16px;
+}
+
+.member-form .song-flag-toggle {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.member-form .song-flag-toggle input {
+  flex: 0 0 auto;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  width: 16px;
+}
+
 .practice-generate-button {
   grid-column: 1 / -1;
   justify-self: start;
@@ -422,6 +452,149 @@ code {
   text-transform: uppercase;
 }
 
+.practice-matrix-controls {
+  align-items: end;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+  margin-bottom: 18px;
+  padding: 0 0 18px;
+}
+
+.practice-matrix-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.practice-matrix-controls label {
+  color: var(--text);
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.practice-matrix-controls input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+  min-width: 0;
+  padding: 10px;
+  width: 100%;
+}
+
+.practice-matrix-scroll {
+  border: 1px solid var(--border);
+  max-width: 100%;
+  overflow: auto;
+}
+
+.practice-matrix-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 100%;
+  width: max-content;
+}
+
+.practice-matrix-table th,
+.practice-matrix-table td {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  min-width: 100px;
+  padding: 10px 12px;
+  text-align: center;
+}
+
+.practice-matrix-table thead th {
+  background: var(--accent-bg);
+  color: var(--text-h);
+  font-size: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.practice-matrix-table thead th:first-child,
+.practice-matrix-table tbody th {
+  left: 0;
+  min-width: 190px;
+  position: sticky;
+  text-align: left;
+  z-index: 1;
+}
+
+.practice-matrix-table thead th:first-child {
+  z-index: 3;
+}
+
+.practice-matrix-table tbody th span,
+.practice-matrix-table tbody th small,
+.practice-matrix-table thead th small {
+  display: block;
+}
+
+.practice-matrix-table tbody th span {
+  color: var(--text-h);
+  font-size: 13px;
+}
+
+.practice-matrix-table tbody th small,
+.practice-matrix-table thead th small {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 3px;
+}
+
+.practice-matrix-table thead th .practice-matrix-day-total {
+  color: var(--text-h);
+  font-weight: 700;
+}
+
+.practice-matrix-count {
+  align-items: center;
+  border-radius: 4px;
+  color: var(--accent);
+  display: inline-flex;
+  font-size: 15px;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 30px;
+  min-width: 34px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.practice-matrix-count:hover,
+.practice-matrix-count:focus-visible {
+  background: var(--accent-bg);
+}
+
+.practice-matrix-unavailable {
+  color: var(--text);
+  opacity: 0.5;
+}
+
+@media (max-width: 900px) {
+  .practice-matrix-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .practice-matrix-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
 .practice-table tbody tr[draggable="true"] {
   cursor: grab;
 }
@@ -453,6 +626,12 @@ code {
 .multi-song-staff {
   background: var(--accent-bg);
   color: var(--text-h);
+}
+
+.practice-staff-list > .replacement-staff {
+  background: #fee4e2;
+  color: #b42318;
+  font-weight: 600;
 }
 
 .schedule-editor-controls {
@@ -1074,6 +1253,17 @@ body {
   text-align: right;
 }
 
+.google-sign-in-wrap .google-sign-in-error {
+  display: block;
+  max-width: 360px;
+  text-align: right;
+  width: 100%;
+}
+
+.signin-content .google-sign-in-wrap .google-sign-in-error {
+  text-align: center;
+}
+
 .google-sign-in:hover,
 .google-sign-in:focus-visible {
   background: #345f8d;
@@ -1302,10 +1492,6 @@ body {
   .google-sign-in {
     font-size: 12px;
     padding: 8px 10px;
-  }
-
-  .google-sign-in-wrap .picker-error {
-    display: none;
   }
 }
 
@@ -1754,6 +1940,24 @@ body {
 .setlist-songs {
   border-top: 1px solid var(--border);
   margin-bottom: 28px;
+}
+
+.setlist-song-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.setlist-song-heading h2 {
+  margin: 0;
+}
+
+.setlist-song-heading .setlist-matrix-link {
+  margin: 0;
+  text-decoration: none;
 }
 
 .setlist-song {
