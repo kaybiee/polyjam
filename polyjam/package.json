@@ -7,6 +7,8 @@
     "dev": "vite --host localhost --strictPort",
     "api": "node server/index.js",
     "build": "tsc -b && vite build",
+    "test": "node --experimental-strip-types --test src/practiceScheduling.test.ts",
+    "test:coverage": "c8 --include=src/practiceScheduling.ts --reporter=text --reporter=html npm test",
     "lint": "eslint .",
     "preview": "vite preview --host localhost --strictPort"
   },
@@ -26,6 +28,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
+    "c8": "^12.0.0",
     "eslint": "^10.9.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",

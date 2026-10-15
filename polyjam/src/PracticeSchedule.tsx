@@ -25,7 +25,7 @@ function PracticeSchedule() {
     if (!schedule) return null;
     const currentSchedule = schedule;
     const addableSongs = source
-        ? getAvailablePracticeSongs(source, currentSchedule.songs, currentSchedule.startTime, currentSchedule.endTime, currentSchedule.excludedSongIds, songToReplace || undefined, true)
+        ? getAvailablePracticeSongs(source, currentSchedule.songs, currentSchedule.startTime, currentSchedule.endTime, currentSchedule.excludedSongIds, songToReplace || undefined, Boolean(songToReplace))
         : [];
     const staffSongCounts: Record<string, number> = {};
     currentSchedule.songs.forEach((song) => {
@@ -90,17 +90,32 @@ function PracticeSchedule() {
     }
 
     function removeSong(songId: string) {
+        let cursor = timeToMinutes(startTime);
+        const remainingSongs = currentSchedule.songs
+            .filter((song) => song.songId !== songId)
+            .map((song) => {
+                const compactedSong = { ...song, startTime: minutesToTime(cursor) };
+                cursor += song.durationMinutes;
+                return compactedSong;
+            });
         saveSongs(
-            currentSchedule.songs.filter((song) => song.songId !== songId),
+            remainingSongs,
             currentSchedule,
             (currentSchedule.excludedSongIds ?? []).filter((excludedSongId) => excludedSongId !== songId),
         );
+        if (songToReplace === songId) {
+            setSongToReplace("");
+            setSongToAdd("");
+        }
     }
 
     function replaceSong() {
         const selectedSong = addableSongs.find((song) => song.songId === songToAdd);
-        if (!selectedSong || !songToReplace) return;
-        saveSongs(currentSchedule.songs.map((song) => song.songId === songToReplace ? selectedSong : song), currentSchedule);
+        if (!selectedSong) return;
+        const songs = songToReplace
+            ? currentSchedule.songs.map((song) => song.songId === songToReplace ? selectedSong : song)
+            : [...currentSchedule.songs, selectedSong];
+        saveSongs(songs, currentSchedule);
         setSongToAdd("");
         setSongToReplace("");
     }
@@ -234,7 +249,7 @@ function PracticeSchedule() {
             </div>
             {staffCopyStatus && <p className="status-message" role="status" aria-live="polite">{staffCopyStatus}</p>}
             <div className="practice-table-wrap"><table className="practice-table"><thead><tr><th>Début</th><th>Durée</th><th>Chanson</th><th>Show Ready (%)</th><th>Staff disponible</th><th>Staff absent</th><th>Actions</th></tr></thead><tbody>{currentSchedule.songs.map((song) => <tr key={song.songId} draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", song.songId); setDraggedSongId(song.songId); }} onDragEnd={() => { setDraggedSongId(null); setDropTargetSongId(null); }} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; setDropTargetSongId(song.songId); }} onDrop={(event) => handleSongDrop(event, song.songId)} className={`${draggedSongId === song.songId ? "is-dragging " : ""}${dropTargetSongId === song.songId && draggedSongId !== song.songId ? "is-drop-target" : ""}`} title="Glisser pour réorganiser"><td>{song.startTime}</td><td><input className="schedule-song-duration" type="number" min="1" max="240" value={song.durationMinutes} onChange={(event) => updateSongDuration(song.songId, Number(event.target.value))} /> min</td><td>{song.title}</td><td>{song.readiness}%</td><td><span className="practice-staff-list">{song.availableStaff.length > 0 ? song.availableStaff.map((staff) => { const count = staffSongCounts[getStaffWorkloadKey(staff)] ?? 0; const className = song.replacementStaff?.includes(staff) ? "replacement-staff" : count === 1 ? "single-song-staff" : "multi-song-staff"; return <span className={className} key={staff}>{staff}</span>; }) : "Aucun"}</span></td><td>{song.missingStaff.join(", ") || "-"}</td><td><button className="schedule-order-button" type="button" onClick={() => removeSong(song.songId)} aria-label={`Retirer ${song.title}`} title="Retirer la chanson">×</button></td></tr>)}</tbody></table></div>
-            {source && <div className="schedule-add-song"><label htmlFor="schedule-add-song-select">Remplacer une chanson dans la durée prévue</label><select id="schedule-add-song-select" value={songToAdd} onChange={(event) => setSongToAdd(event.target.value)} disabled={addableSongs.length === 0}><option value="">{addableSongs.length ? "Choisir une chanson disponible" : "Aucune chanson compatible"}</option>{addableSongs.map((song) => <option key={song.songId} value={song.songId}>{song.title} - {song.artist}</option>)}</select><select aria-label="Chanson à remplacer" value={songToReplace} onChange={(event) => { setSongToReplace(event.target.value); setSongToAdd(""); }}><option value="">Choisir la chanson à remplacer</option>{currentSchedule.songs.map((song) => <option key={song.songId} value={song.songId}>{song.title}</option>)}</select><button className="member-save-button" type="button" onClick={replaceSong} disabled={!songToAdd || !songToReplace || !addableSongs.some((song) => song.songId === songToAdd)}>Remplacer</button></div>}
+            {source && <div className="schedule-add-song"><label htmlFor="schedule-add-song-select">Ajouter ou remplacer une chanson</label><select id="schedule-add-song-select" value={songToAdd} onChange={(event) => setSongToAdd(event.target.value)} disabled={addableSongs.length === 0}><option value="">{addableSongs.length ? "Choisir une chanson disponible" : "Aucune chanson compatible"}</option>{addableSongs.map((song) => <option key={song.songId} value={song.songId}>{song.title} - {song.artist}</option>)}</select><select aria-label="Chanson à remplacer (facultatif)" value={songToReplace} onChange={(event) => { setSongToReplace(event.target.value); setSongToAdd(""); }}><option value="">Ajouter au prochain créneau libre</option>{currentSchedule.songs.map((song) => <option key={song.songId} value={song.songId}>{song.title}</option>)}</select><button className="member-save-button" type="button" onClick={replaceSong} disabled={!songToAdd || !addableSongs.some((song) => song.songId === songToAdd)}>{songToReplace ? "Remplacer" : "Ajouter"}</button></div>}
         </div>
     );
 }
