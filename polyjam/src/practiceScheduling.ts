@@ -24,6 +24,7 @@ export interface PracticeSong {
     artist: string;
     staffMemberIds: string[];
     staffInstruments?: Record<string, string>;
+    chantNecessaire?: boolean;
     readiness?: number;
 }
 
@@ -123,7 +124,7 @@ export function getAvailablePracticeSongs(
         if (scheduledIds.has(song.songId)) return [];
         for (const slotStart of possibleStarts) {
             if (slotStart + duration > slotEnd) continue;
-            const result = buildScheduledSong(song, source.members, source.availabilityDate, slotStart, duration, midpoint, source.forgiveness);
+            const result = buildScheduledSong(song, source.members, source.availabilityDate, slotStart, duration, midpoint, source.forgiveness, Boolean(source.requireSingersForChantNecessaire));
             if (result) return [result.song];
         }
         return [];
@@ -241,6 +242,7 @@ export function generatePracticeCandidates(
     durationMinutes: number,
     forgiveness: number,
     prioritySongId?: string,
+    requireSingersForChantNecessaire = false,
 ): PracticeCandidate[] {
     const start = timeToMinutes(startTime);
     const end = timeToMinutes(endTime);
@@ -262,10 +264,10 @@ export function generatePracticeCandidates(
                 break;
             }
             const availableSongs = remainingSongs.flatMap((song) => {
-                const result = buildScheduledSong(song, members, date, cursor, durationMinutes, midpoint, forgiveness);
+                const result = buildScheduledSong(song, members, date, cursor, durationMinutes, midpoint, forgiveness, requireSingersForChantNecessaire);
                 if (!result) return [];
                 if (cursor < midpoint && !result.song.fullStaff && midpoint + durationMinutes <= slot.to) {
-                    const laterFullStaffResult = buildScheduledSong(song, members, date, midpoint, durationMinutes, midpoint, 0);
+                    const laterFullStaffResult = buildScheduledSong(song, members, date, midpoint, durationMinutes, midpoint, 0, requireSingersForChantNecessaire);
                     if (laterFullStaffResult?.song.fullStaff) return [];
                 }
                 return [{ song, result }];
@@ -282,10 +284,10 @@ export function generatePracticeCandidates(
                 }
                 if (cursor >= midpoint) {
                     const isSecondHalfOnly = (song: PracticeSong) => {
-                        const firstHalfResult = buildScheduledSong(song, members, date, start, durationMinutes, midpoint, forgiveness);
+                        const firstHalfResult = buildScheduledSong(song, members, date, start, durationMinutes, midpoint, forgiveness, requireSingersForChantNecessaire);
                         if (!firstHalfResult) return true;
                         if (!firstHalfResult.song.fullStaff) {
-                            const secondHalfResult = buildScheduledSong(song, members, date, midpoint, durationMinutes, midpoint, 0);
+                            const secondHalfResult = buildScheduledSong(song, members, date, midpoint, durationMinutes, midpoint, 0, requireSingersForChantNecessaire);
                             if (secondHalfResult?.song.fullStaff) return true;
                         }
                         return false;
@@ -387,6 +389,7 @@ function buildScheduledSong(
     durationMinutes: number,
     midpoint: number,
     forgiveness: number,
+    requireSingersForChantNecessaire = false,
 ) {
     const requiredHalves = getRequiredAvailabilityHalves(start, durationMinutes, midpoint);
     const staff = song.staffMemberIds.map((id) => ({
@@ -418,8 +421,8 @@ function buildScheduledSong(
         return substitute ? [`${substitute.name} (${requiredInstrument})`] : [];
     });
     const missingRequiredNames = missingRequiredStaff.map((member) => `${member.name} (${member.instrument})`);
-    if (missingRequiredStaff.some((member) => member.instrument === "Chant")) return null;
-    if (missingRequiredNames.length > forgiveness || substitutes.length < missingRequiredNames.length) return null;
+    if (requireSingersForChantNecessaire && song.chantNecessaire && missingRequiredStaff.some((member) => member.instrument === "Chant")) return null;
+    if (missingRequiredNames.length > forgiveness || (substitutes.length > 0 && substitutes.length < missingRequiredNames.length)) return null;
 
     return {
         song: {

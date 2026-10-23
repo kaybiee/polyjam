@@ -92,13 +92,13 @@ function Pratique() {
         await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
         const selectedSongs = selectedSetlist?.songIds.map((songId) => songs.find((song) => song.songId === songId)).filter((song): song is PracticeSong => Boolean(song)) ?? [];
         const searchDates = getAvailabilityDatesInRange(availabilityDates, date, endDate);
-        const generated = generatePracticeCandidates(searchDates, selectedSongs, members, startTime, endTime, 15, forgiveness, selectedSongId || undefined);
+        const generated = generatePracticeCandidates(searchDates, selectedSongs, members, startTime, endTime, 15, forgiveness, selectedSongId || undefined, requireSingersForChantNecessaire);
         const filteredCandidates = selectedSongId
             ? generated.filter((candidate) => candidate.songs.some((song) => song.songId === selectedSongId))
             : generated;
         setCandidates(sortCandidates(filteredCandidates, sortMode, date, prioritizeCompleteSongs));
         setGenerating(false);
-    }, [availabilityDates, date, endDate, endTime, forgiveness, members, prioritizeCompleteSongs, selectedSetlist, selectedSongId, songs, sortMode, startTime]);
+    }, [availabilityDates, date, endDate, endTime, forgiveness, members, prioritizeCompleteSongs, requireSingersForChantNecessaire, selectedSetlist, selectedSongId, songs, sortMode, startTime]);
     const selectedSetlistSongs = selectedSetlist?.songIds
         .map((songId) => songs.find((song) => song.songId === songId))
         .filter((song): song is PracticeSong => Boolean(song)) ?? [];

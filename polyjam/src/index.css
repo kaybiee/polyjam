@@ -2277,6 +2277,11 @@ button.instrument-chip:hover {
   width: 100%;
 }
 
+.song-modal {
+  max-height: min(80vh, 720px);
+  overflow-y: auto;
+}
+
 .assigned-songs-modal {
   max-height: min(80vh, 720px);
   max-width: 560px;

@@ -292,6 +292,20 @@ test("generatePracticeCandidates records an available substitute for forgiven mi
     assert.deepEqual(candidates[0]?.songs[0]?.missingStaff, ["Alice Example (Guitar)"]);
 });
 
+test("generatePracticeCandidates schedules forgiven missing staff when no substitute is available", () => {
+    const date = makeDate({ name: "Alice Example", availability: parseAvailability("non") });
+    const song = { ...makeSong("song", ["alice"]), staffInstruments: { alice: "Guitar" } };
+    const members = [makeMember("alice", "Alice Example")];
+
+    const forgiven = generatePracticeCandidates([date], [song], members, "12:00", "12:30", 30, 1);
+    const notForgiven = generatePracticeCandidates([date], [song], members, "12:00", "12:30", 30, 0);
+
+    assert.equal(forgiven[0]?.songs[0]?.fullStaff, false);
+    assert.deepEqual(forgiven[0]?.songs[0]?.replacementStaff, []);
+    assert.deepEqual(forgiven[0]?.songs[0]?.missingStaff, ["Alice Example (Guitar)"]);
+    assert.deepEqual(notForgiven, []);
+});
+
 test("generatePracticeCandidates reports songs that do not fit in the available slot", () => {
     const candidates = generatePracticeCandidates(
         [makeDate()],
@@ -314,6 +328,18 @@ test("generatePracticeCandidates rejects invalid slots and dates without schedul
     assert.deepEqual(generatePracticeCandidates([date], [song], [], "13:00", "12:00", 30, 0), []);
     assert.deepEqual(generatePracticeCandidates([date], [song], [], "12:00", "13:00", 0, 0), []);
     assert.deepEqual(generatePracticeCandidates([date], [makeSong("chant", ["singer"])], [makeMember("singer", "Singer", "Chant")], "12:00", "13:00", 30, 0), []);
+});
+
+test("generatePracticeCandidates only requires singers for chant-necessary songs when enabled", () => {
+    const date = makeDate({ name: "Singer", availability: parseAvailability("non") });
+    const members = [makeMember("singer", "Singer", "Chant")];
+    const chantNecessarySong = { ...makeSong("chant-necessary", ["singer"]), chantNecessaire: true };
+
+    const allowed = generatePracticeCandidates([date], [chantNecessarySong], members, "12:00", "12:30", 30, 1);
+    const required = generatePracticeCandidates([date], [chantNecessarySong], members, "12:00", "12:30", 30, 1, undefined, true);
+
+    assert.equal(allowed[0]?.songs[0]?.fullStaff, false);
+    assert.deepEqual(required, []);
 });
 
 test("generatePracticeCandidates defers a replaceable partial song to its full-staff half", () => {
@@ -504,7 +530,9 @@ test("generatePracticeCandidates handles absent staff records and instrument lis
     );
 
     assert.deepEqual(missingMember, []);
-    assert.deepEqual(noInstrumentList, []);
+    assert.equal(noInstrumentList[0]?.songs[0]?.songId, "no-substitute");
+    assert.deepEqual(noInstrumentList[0]?.songs[0]?.replacementStaff, []);
+    assert.deepEqual(noInstrumentList[0]?.songs[0]?.missingStaff, ["Original (Guitar)"]);
 });
 
 test("sortCandidates prioritizes candidates with complete songs", () => {
