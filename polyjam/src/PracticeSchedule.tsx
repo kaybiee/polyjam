@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { getAvailablePracticeSongs, getRestrictedStaffUnavailableForSong, getStaffWorkloadKey, minutesToTime, timeToMinutes, type PracticeCandidate, type PracticeScheduleSource, type ScheduledSong } from "./practiceScheduling";
+import { getAvailablePracticeSongs, getRestrictedStaffUnavailableForSong, getStaffWorkloadKey, minutesToTime, recalculateScheduledSongAvailability, timeToMinutes, type PracticeCandidate, type PracticeScheduleSource, type ScheduledSong } from "./practiceScheduling";
 
 function PracticeSchedule() {
     const navigate = useNavigate();
@@ -180,7 +180,10 @@ function PracticeSchedule() {
         }
 
         const updated = { ...currentSchedule, songs: songs.map((song) => {
-            const updatedSong = { ...song, startTime: minutesToTime(cursor) };
+            const songStartTime = minutesToTime(cursor);
+            const updatedSong = source
+                ? recalculateScheduledSongAvailability(source, song, songStartTime, startTime, endTime)
+                : { ...song, startTime: songStartTime };
             cursor += song.durationMinutes;
             return updatedSong;
         }) };

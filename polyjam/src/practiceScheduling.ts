@@ -154,6 +154,29 @@ export function getRestrictedStaffUnavailableForSong(
     });
 }
 
+export function recalculateScheduledSongAvailability(
+    source: PracticeScheduleSource,
+    scheduledSong: ScheduledSong,
+    startTime: string,
+    scheduleStartTime: string,
+    scheduleEndTime: string,
+): ScheduledSong {
+    const song = source.setlistSongs.find((item) => item.songId === scheduledSong.songId);
+    if (!song) return { ...scheduledSong, startTime };
+    const scheduleStart = timeToMinutes(scheduleStartTime);
+    const midpoint = scheduleStart + Math.floor((timeToMinutes(scheduleEndTime) - scheduleStart) / 2);
+    const result = buildScheduledSong(
+        song,
+        source.members,
+        source.availabilityDate,
+        timeToMinutes(startTime),
+        scheduledSong.durationMinutes,
+        midpoint,
+        song.staffMemberIds.length,
+    );
+    return result?.song ?? { ...scheduledSong, startTime };
+}
+
 export function getSongAttendance(
     song: PracticeSong,
     members: PracticeMember[],

@@ -6,6 +6,7 @@ import {
     getRestrictedStaffUnavailableForSong,
     getSongAttendance,
     getStaffWorkloadKey,
+    recalculateScheduledSongAvailability,
     generatePracticeCandidates,
     minutesToTime,
     parseAvailability,
@@ -212,6 +213,28 @@ test("getRestrictedStaffUnavailableForSong detects half-day conflicts and skips 
     assert.deepEqual(getRestrictedStaffUnavailableForSong(source, "song", "12:30", 30, "12:00", "13:00"), ["First Person"]);
     assert.deepEqual(getRestrictedStaffUnavailableForSong(source, "song", "12:00", 30, "12:00", "13:00"), ["Second Person"]);
     assert.deepEqual(getRestrictedStaffUnavailableForSong(source, "absent", "12:00", 30, "12:00", "13:00"), []);
+});
+
+test("recalculateScheduledSongAvailability refreshes staff for the new half", () => {
+    const song = makeSong("song", ["first"]);
+    const source = makeSource({
+        setlistSongs: [song],
+        members: [makeMember("first", "First Person")],
+        availabilityDate: makeDate({ name: "First Person", availability: parseAvailability("première moitié") }),
+    });
+    const scheduledSong = {
+        ...makeScheduledSong("song", "12:30"),
+        availableStaff: [],
+        missingStaff: ["First Person (Guitar)"],
+        fullStaff: false,
+    };
+
+    const movedSong = recalculateScheduledSongAvailability(source, scheduledSong, "12:00", "12:00", "13:00");
+
+    assert.equal(movedSong.startTime, "12:00");
+    assert.deepEqual(movedSong.availableStaff, ["First Person (Guitar)"]);
+    assert.deepEqual(movedSong.missingStaff, []);
+    assert.equal(movedSong.fullStaff, true);
 });
 
 test("getSongAttendance chooses the half with fewest absences and ignores optional roles", () => {
