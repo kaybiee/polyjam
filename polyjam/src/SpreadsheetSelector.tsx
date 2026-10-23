@@ -26,10 +26,6 @@ function SpreadsheetSelector({ selectedSpreadsheet, onFileSelected, onRefresh }:
 
     return (
         <div className="spreadsheet-selector">
-            <div>
-                <p className="eyebrow">Fichier sélectionné</p>
-                <strong>{selectedSpreadsheet?.name ?? "Aucun fichier sélectionné"}</strong>
-            </div>
             {selectedSpreadsheet && onRefresh && <button className="spreadsheet-refresh-button" type="button" onClick={onRefresh} aria-label="Actualiser le fichier" title="Actualiser">↻ Actualiser</button>}
             <GoogleDrivePicker onFileSelected={selectSpreadsheet} />
         </div>

@@ -164,7 +164,7 @@ function PracticeSchedule() {
 
         let cursor = timeToMinutes(startTime);
         const proposedStart = songs.slice(0, insertIndex).reduce((time, song) =>
-            Math.max(time, timeToMinutes(song.startTime)) + song.durationMinutes, cursor);
+            time + song.durationMinutes, cursor);
         if (source) {
             const unavailableStaff = getRestrictedStaffUnavailableForSong(
                 source,
@@ -180,7 +180,6 @@ function PracticeSchedule() {
         }
 
         const updated = { ...currentSchedule, songs: songs.map((song) => {
-            cursor = Math.max(cursor, timeToMinutes(song.startTime));
             const updatedSong = { ...song, startTime: minutesToTime(cursor) };
             cursor += song.durationMinutes;
             return updatedSong;
